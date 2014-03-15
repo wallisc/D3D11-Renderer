@@ -1,0 +1,56 @@
+newmtl CornellBox_Original1:backWall1
+illum 4
+Kd 0.73 0.71 0.68
+Ka 0.40 0.40 0.40
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl CornellBox_Original1:ceiling1
+illum 4
+Kd 0.73 0.71 0.68
+Ka 0.40 0.40 0.40
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl CornellBox_Original1:floor1
+illum 4
+Kd 0.73 0.71 0.68
+Ka 0.40 0.40 0.40
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl CornellBox_Original1:leftWall1
+illum 4
+Kd 0.63 0.06 0.05
+Ka 0.40 0.40 0.40
+Tf 1.00 1.00 1.00
+Ni 1.50
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl CornellBox_Original1:rightWall1
+illum 4
+Kd 0.14 0.45 0.09
+Ka 0.40 0.40 0.40
+Tf 1.00 1.00 1.00
+Ni 1.50
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl CornellBox_Original1:shortBox1
+illum 4
+Kd 0.73 0.71 0.68
+Ka 0.40 0.40 0.40
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.00 0.00 0.00
+Ns 10.00
+newmtl CornellBox_Original1:tallBox
+illum 4
+Kd 0.73 0.71 0.68
+Ka 0.40 0.40 0.40
+Tf 1.00 1.00 1.00
+Ni 1.00
+Ks 0.00 0.00 0.00
+Ns 10.00
