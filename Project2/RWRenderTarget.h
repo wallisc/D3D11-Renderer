@@ -60,6 +60,7 @@ public:
    {
       return pRtv;
    }
+
 private:
    ID3D11Texture2D *pResource;
    ID3D11RenderTargetView *pRtv;

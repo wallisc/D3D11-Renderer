@@ -1,4 +1,7 @@
 Texture3D<float4> m_colorBuffer : register(t1);
+Texture2D<float4> m_firstPassColor : register(t2);
+Texture2D<float4> m_firstPassNormals : register(t3);
+
 RWTexture2D<uint> m_colorBufferCount : register(u1);
 
 // TODO: Pass this in via a constant buffer
@@ -16,15 +19,16 @@ float4 main(VertexOutput input) : SV_TARGET
    uint pixelDepth = m_colorBufferCount[coord.xy].r;
    float4 color = float4(0, 0, 0, 0);
    
-   for (uint i = 0; i < MAX_DEPTH; i++)
-   {
-      // Used to avoid branching. Makes sure entries above pixelDepth are ignored
-      int validationMultiplier = i < pixelDepth; 
-
-      coord.z = i;
-      color += validationMultiplier * m_colorBuffer[coord] / float(pixelDepth);
-   }
-
-   color.w = 1.0f;
-	return color;
+   //for (uint i = 0; i < MAX_DEPTH; i++)
+   //{
+   //   // Used to avoid branching. Makes sure entries above pixelDepth are ignored
+   //   int validationMultiplier = i < pixelDepth; 
+   //
+   //   coord.z = i;
+   //   color += validationMultiplier * m_colorBuffer[coord] / float(pixelDepth);
+   //}
+   //
+   //color.w = 1.0f;
+	color = m_firstPassColor[coord.xy];
+   return color;
 }

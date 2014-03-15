@@ -1,7 +1,7 @@
 Texture2D m_colorMap : register(t0);
 Texture2D m_shadowMap : register(t1);
-RWTexture3D<float4> m_colorBuffer : register(u1);
-RWTexture2D<uint> m_colorBufferCounter : register(u2);
+RWTexture3D<float4> m_colorBuffer : register(u2);
+RWTexture2D<uint> m_colorBufferCounter : register(u3);
 SamplerState m_colorSampler : register(s0);
 
 #define MAX_DEPTH 8
@@ -13,6 +13,12 @@ struct PixelShaderInput
   float2 tex0 : TEXCOORD0;
   float4 norm : NORMAL0;
   float4 lpos: TEXCOORD1;
+};
+
+struct PixelShaderOutput
+{
+  float4 color : COLOR0;
+  float4 norm : COLOR1;
 };
 
 cbuffer Material 
@@ -44,8 +50,9 @@ float3 phong( float3 norm, float3 eye, float3 lightDir, float3 amb, float3 dif, 
     return color;
 }
 
-float4 main( PixelShaderInput input ) : SV_TARGET
+PixelShaderOutput main( PixelShaderInput input ) : SV_TARGET
 {
+    PixelShaderOutput output;
     float3 lightDir = normalize(lightPos.xyz - float3(input.worldPos.xyz));
     float3 n = normalize(float3(input.norm.xyz));
     float3 e = -normalize(float3(input.pos.xyz));
@@ -85,8 +92,11 @@ float4 main( PixelShaderInput input ) : SV_TARGET
     m_colorBuffer[int3(uavCoord.xy, depth)] 
        = float4(color, input.pos.z);
     m_colorBufferCounter[uavCoord.xy].r++;
+
+    output.color = float4(color, 1.0);
+    output.norm = input.norm;
     
-    return float4(color, 1.0);
+    return output;
 }
 
 float4 mainNoShadow( PixelShaderInput input ) : SV_TARGET

@@ -1,9 +1,12 @@
-﻿Build started 3/14/2014 10:39:26 AM.
+﻿Build started 3/14/2014 11:13:06 PM.
      1>Project "C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\Project2\Project2.vcxproj" on node 2 (Build target(s)).
-     1>Link:
+     1>FxCompile:
+         C:\Program Files (x86)\Windows Kits\8.0\bin\x86\fxc.exe /nologo /E"main" /T ps_5_0 /Fo "C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Debug\RedShader.cso" /Od /Zi RedShader.hlsl 
+         compilation object save succeeded; see C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Debug\RedShader.cso
+       Link:
          Project2.vcxproj -> C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Debug\DirectX.exe
      1>Done Building Project "C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\Project2\Project2.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.04
+Time Elapsed 00:00:00.08

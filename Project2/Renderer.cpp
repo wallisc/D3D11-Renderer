@@ -194,7 +194,7 @@ void Renderer::Render()
    float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
    unsigned int zeroUints[4] = { 0, 0, 0, 0};
 
-   m_d3dContext->ClearRenderTargetView(m_backBufferTarget, clearColor);
+   m_d3dContext->ClearRenderTargetView(m_pFirstPassColors->GetRenderTargetView(), clearColor);
    m_d3dContext->ClearUnorderedAccessViewFloat(m_uav, clearColor);
    m_d3dContext->ClearUnorderedAccessViewUint(m_colorBufferDepthUAV, zeroUints);
    // Clear the depth buffer to 1.0f and the stencil buffer to 0.
@@ -242,11 +242,14 @@ void Renderer::Render()
       {
          ID3D11ShaderResourceView *pSrv = m_pShadowMap->GetShaderResourceView();
          ID3D11UnorderedAccessView *pUav[] = { m_uav, m_colorBufferDepthUAV };
+         ID3D11RenderTargetView *pRtv[] = { 
+            m_pFirstPassColors->GetRenderTargetView(),
+            m_pFirstPassNormals->GetRenderTargetView() };
          
          m_pTransformConstants->SetData(m_d3dContext, &m_vsTransConstBuf);
 
          m_d3dContext->PSSetShader(m_solidColorPS, 0, 0);
-         m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, &m_backBufferTarget, m_DepthStencilView, 1, 2, pUav, NULL);
+         m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, pRtv, m_DepthStencilView, 2, 2, pUav, NULL);
          m_d3dContext->PSSetShaderResources(1 , 1, &pSrv);
       }
       ID3D11Buffer *pCbs[] = { m_pTransformConstants->GetConstantBuffer() };
@@ -275,10 +278,14 @@ void Renderer::Render()
    
    // Post processing effect
    ID3D11UnorderedAccessView *pUav[] = { m_colorBufferDepthUAV };
+   ID3D11ShaderResourceView *pSrv[] = {
+      m_colorBufferSrv,
+      m_pFirstPassColors->GetShaderResourceView(),
+      m_pFirstPassNormals->GetShaderResourceView()};
 
 
    m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, &m_backBufferTarget, m_DepthStencilView, 1, 1, pUav, NULL);
-   m_d3dContext->PSSetShaderResources(1 , 1, &m_colorBufferSrv);
+   m_d3dContext->PSSetShaderResources(1 , 3, pSrv);
 
    m_d3dContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
    m_d3dContext->VSSetShader(m_planeVS, 0, 0);
@@ -291,6 +298,9 @@ void Renderer::Render()
 bool Renderer::LoadContent() 
 {
    m_pShadowMap = new ShadowMap(m_d3dDevice, m_width, m_height);
+   m_pFirstPassColors = new RWRenderTarget(m_d3dDevice, m_width, m_height);
+   m_pFirstPassNormals = new RWRenderTarget(m_d3dDevice, m_width, m_height);
+
 
    m_lightPosition = LIGHT_POSITION;
 
@@ -477,7 +487,11 @@ bool Renderer::LoadContent()
 
 void Renderer::UnloadContent() 
 {
+   delete m_pFirstPassColors;
+   delete m_pFirstPassNormals;
    delete m_pShadowMap;
+   delete m_pTransformConstants;
+   delete m_pLightConstants;
 
    for(UINT i = 0; i < scene.size(); i++)
    {

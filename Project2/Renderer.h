@@ -7,6 +7,7 @@
 
 #include "ShadowMap.h"
 #include "ConstantBuffer.h"
+#include "RWRenderTarget.h"
 
 #include <xnamath.h>
 #include <vector>
@@ -56,16 +57,15 @@ private:
    ConstantBuffer<VS_Transformation_Constant_Buffer> *m_pTransformConstants;
    ConstantBuffer<PS_Light_Constant_Buffer> *m_pLightConstants;
 
+   RWRenderTarget* m_pFirstPassColors;
+   RWRenderTarget* m_pFirstPassNormals;
+
+
    ID3D11SamplerState* m_colorMapSampler;
    ID3D11RasterizerState* m_rasterState;
    ID3D11UnorderedAccessView* m_uav;
    ID3D11UnorderedAccessView* m_colorBufferDepthUAV;
    ID3D11ShaderResourceView *m_colorBufferSrv;
-
-   ID3D11RenderTargetView   *m_FirstPassLightingRtv;
-   ID3D11RenderTargetView   *m_FirstPassNormalsRtv;
-   ID3D11ShaderResourceView *m_FirstPassLightingSrv;
-   ID3D11ShaderResourceView *m_FirstPassNormalsSrv;
 
    ID3D11VertexShader* m_planeVS;
    ID3D11PixelShader* m_redPS;
