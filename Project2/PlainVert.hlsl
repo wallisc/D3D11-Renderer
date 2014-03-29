@@ -16,12 +16,14 @@ cbuffer Lights
    float4x4 lightMvp;
 };
 
+// TODO: (msft-Chris) Revisit this struct and slim out variables that aren't needed
 struct PixelShaderInput
 {
   float4 pos : SV_POSITION;
   float3 worldPos : POSITIONT;
   float2 tex0: TEXCOORD0;
   float4 norm : NORMAL0;
+  float4 transformedNorm : NORMAL1;
   float4 lpos: TEXCOORD1;
 };
 
@@ -34,6 +36,8 @@ PixelShaderInput main( VertexShaderInput input )
     output.worldPos = input.pos.xyz;
     output.norm = input.norm;
     output.lpos = mul(lightMvp, input.pos);
+    output.transformedNorm = mul(mvpMat, input.norm);
+
 
     output.tex0 = input.tex0;
     return output;

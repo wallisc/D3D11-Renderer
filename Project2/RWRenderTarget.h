@@ -14,7 +14,7 @@ public:
       texDesc.ArraySize = 1;
       texDesc.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
       texDesc.CPUAccessFlags = 0;
-      texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+      texDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
       texDesc.Height = height;
       texDesc.MipLevels = 1;
       texDesc.MiscFlags = 0;

@@ -24,9 +24,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="RedShader.hlsl">
-      <Filter>Source Files\Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="PlainPixel.hlsl">
       <Filter>Source Files\Shaders</Filter>
     </FxCompile>
@@ -34,6 +31,15 @@
       <Filter>Source Files\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="PlaneVertexShader.hlsl">
+      <Filter>Source Files\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="GIPixel.hlsl">
+      <Filter>Source Files\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="BlurPixel.hlsl">
+      <Filter>Source Files\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="PlaneVertexShader2.hlsl">
       <Filter>Source Files\Shaders</Filter>
     </FxCompile>
   </ItemGroup>
@@ -79,6 +85,9 @@
       <Filter>Source Files\D3DLayer</Filter>
     </ClInclude>
     <ClInclude Include="RWRenderTarget.h">
+      <Filter>Source Files\D3DLayer</Filter>
+    </ClInclude>
+    <ClInclude Include="PlaneRenderer.h">
       <Filter>Source Files\D3DLayer</Filter>
     </ClInclude>
   </ItemGroup>

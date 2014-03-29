@@ -17,7 +17,7 @@
 }
 
 #define HR( e ) \
-   HM( e, "Error has occured: ##e" );
+   HM( e, "Error has occured in __FILE__@__LINE__: ##e" );
 
 class D3DUtils
 {

@@ -168,7 +168,7 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
    m_camZ += tz;
    m_camYAngle += ry;
 
-   XMMATRIX perspective = XMMatrixPerspectiveFovLH(3.14f * 0.25f, (FLOAT)m_width / (FLOAT)m_height, 0.01f, 100.0f);
+   XMMATRIX perspective = XMMatrixPerspectiveFovLH(3.14f * 0.4f, (FLOAT)m_width / (FLOAT)m_height, .5f, 100.0f);
    XMVECTOR yAxis(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
    XMVECTOR xAxis(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f));
 
@@ -192,9 +192,15 @@ void Renderer::Render()
    if (!m_d3dContext) return;
 
    float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
+   float clearNormals[4] = { 0.5f, 0.5f, 0.5f, 0.0f };
+   float black[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
    unsigned int zeroUints[4] = { 0, 0, 0, 0};
 
+   m_d3dContext->ClearRenderTargetView(m_pFirstPassPositions->GetRenderTargetView(), clearColor);
    m_d3dContext->ClearRenderTargetView(m_pFirstPassColors->GetRenderTargetView(), clearColor);
+   m_d3dContext->ClearRenderTargetView(m_pFirstPassNormals->GetRenderTargetView(), clearNormals);
+   
    m_d3dContext->ClearUnorderedAccessViewFloat(m_uav, clearColor);
    m_d3dContext->ClearUnorderedAccessViewUint(m_colorBufferDepthUAV, zeroUints);
    // Clear the depth buffer to 1.0f and the stencil buffer to 0.
@@ -244,12 +250,13 @@ void Renderer::Render()
          ID3D11UnorderedAccessView *pUav[] = { m_uav, m_colorBufferDepthUAV };
          ID3D11RenderTargetView *pRtv[] = { 
             m_pFirstPassColors->GetRenderTargetView(),
+            m_pFirstPassPositions->GetRenderTargetView(),
             m_pFirstPassNormals->GetRenderTargetView() };
          
          m_pTransformConstants->SetData(m_d3dContext, &m_vsTransConstBuf);
-
+         
          m_d3dContext->PSSetShader(m_solidColorPS, 0, 0);
-         m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, pRtv, m_DepthStencilView, 2, 2, pUav, NULL);
+         m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(3, pRtv, m_DepthStencilView, 3, 2, pUav, NULL);
          m_d3dContext->PSSetShaderResources(1 , 1, &pSrv);
       }
       ID3D11Buffer *pCbs[] = { m_pTransformConstants->GetConstantBuffer() };
@@ -276,22 +283,43 @@ void Renderer::Render()
       }
    }
    
-   // Post processing effect
+   // Post processing passes generate a plane using geometry generated in the VS
+   unsigned int planeStride = sizeof(PlaneVertex);
+   unsigned int planeOffset = 0;
+   m_d3dContext->IASetVertexBuffers( 0, 1, &m_pPlaneRenderer->m_planeBuffer, &planeStride, &planeOffset);
+   m_d3dContext->VSSetShader(m_pPlaneRenderer->m_planeVS, 0, 0);
+   m_d3dContext->IASetInputLayout( m_pPlaneRenderer->m_inputLayout );
+
+   // Screen Space Global Illumination Pass
    ID3D11UnorderedAccessView *pUav[] = { m_colorBufferDepthUAV };
+   ID3D11RenderTargetView *pRtv[] = { m_pPostProcessingRtv->GetRenderTargetView() };
    ID3D11ShaderResourceView *pSrv[] = {
       m_colorBufferSrv,
-      m_pFirstPassColors->GetShaderResourceView(),
+      m_pFirstPassPositions->GetShaderResourceView(),
       m_pFirstPassNormals->GetShaderResourceView()};
 
-
-   m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, &m_backBufferTarget, m_DepthStencilView, 1, 1, pUav, NULL);
+   m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, pRtv, NULL, 1, 1, pUav, NULL);
    m_d3dContext->PSSetShaderResources(1 , 3, pSrv);
 
-   m_d3dContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-   m_d3dContext->VSSetShader(m_planeVS, 0, 0);
-   m_d3dContext->PSSetShader(m_redPS, 0, 0);
+
+   m_d3dContext->PSSetShader(m_globalIlluminationPS, 0, 0);
    m_d3dContext->Draw(3, 0);
 
+   // Post processing effect
+   ID3D11ShaderResourceView *pPostProcessSrv[] = { 
+      m_pFirstPassColors->GetShaderResourceView(),
+      m_pPostProcessingRtv->GetShaderResourceView() };
+   
+   m_d3dContext->PSSetShader(m_blurPS, 0, 0);
+   
+   m_d3dContext->OMSetRenderTargets(1, &m_backBufferTarget, NULL);
+   m_d3dContext->PSSetShaderResources(1, 2, pPostProcessSrv);
+   
+   m_d3dContext->Draw(3, 0);
+
+   // Clear our the SRVs
+   ID3D11ShaderResourceView *pNullSrv[] = { NULL, NULL, NULL};
+   m_d3dContext->PSSetShaderResources(1 , 3, pNullSrv);
    m_swapChain->Present(0, 0);
 }
 
@@ -300,7 +328,10 @@ bool Renderer::LoadContent()
    m_pShadowMap = new ShadowMap(m_d3dDevice, m_width, m_height);
    m_pFirstPassColors = new RWRenderTarget(m_d3dDevice, m_width, m_height);
    m_pFirstPassNormals = new RWRenderTarget(m_d3dDevice, m_width, m_height);
+   m_pFirstPassPositions = new RWRenderTarget(m_d3dDevice, m_width, m_height);
 
+   m_pPostProcessingRtv = new RWRenderTarget(m_d3dDevice, m_width, m_height);
+   m_pPlaneRenderer = new PlaneRenderer(m_d3dDevice);
 
    m_lightPosition = LIGHT_POSITION;
 
@@ -392,10 +423,17 @@ bool Renderer::LoadContent()
 
    HR(D3DUtils::CreatePixelShader(
      m_d3dDevice,
-     "RedShader.hlsl", 
+     "GIPixel.hlsl", 
      "main", 
      "ps_5_0", 
-     &m_redPS));
+     &m_globalIlluminationPS));
+
+   HR(D3DUtils::CreatePixelShader(
+     m_d3dDevice,
+     "BlurPixel.hlsl", 
+     "main", 
+     "ps_5_0", 
+     &m_blurPS));
    
    HR(D3DUtils::CreatePixelShader(
       m_d3dDevice,
@@ -489,9 +527,13 @@ void Renderer::UnloadContent()
 {
    delete m_pFirstPassColors;
    delete m_pFirstPassNormals;
+   delete m_pFirstPassPositions;
+
+   delete m_pPostProcessingRtv;
    delete m_pShadowMap;
    delete m_pTransformConstants;
    delete m_pLightConstants;
+   delete m_pPlaneRenderer;
 
    for(UINT i = 0; i < scene.size(); i++)
    {

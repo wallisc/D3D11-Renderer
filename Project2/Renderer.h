@@ -8,6 +8,7 @@
 #include "ShadowMap.h"
 #include "ConstantBuffer.h"
 #include "RWRenderTarget.h"
+#include "PlaneRenderer.h"
 
 #include <xnamath.h>
 #include <vector>
@@ -49,9 +50,14 @@ private:
    void DestroyD3DMesh(Mesh *d3dMesh);
 
    ID3D11VertexShader* m_solidColorVS;
+   ID3D11VertexShader* m_planeVS;
+
+   ID3D11PixelShader* m_globalIlluminationPS;
    ID3D11PixelShader* m_solidColorPS;
    ID3D11PixelShader* m_solidColorPSNoShadow;
    ID3D11PixelShader* m_texturePS;
+   ID3D11PixelShader* m_blurPS;
+
    ID3D11InputLayout* m_inputLayout;
 
    ConstantBuffer<VS_Transformation_Constant_Buffer> *m_pTransformConstants;
@@ -59,16 +65,17 @@ private:
 
    RWRenderTarget* m_pFirstPassColors;
    RWRenderTarget* m_pFirstPassNormals;
+   RWRenderTarget* m_pFirstPassPositions;
 
+   RWRenderTarget* m_pPostProcessingRtv;
+
+   PlaneRenderer* m_pPlaneRenderer;
 
    ID3D11SamplerState* m_colorMapSampler;
    ID3D11RasterizerState* m_rasterState;
    ID3D11UnorderedAccessView* m_uav;
    ID3D11UnorderedAccessView* m_colorBufferDepthUAV;
    ID3D11ShaderResourceView *m_colorBufferSrv;
-
-   ID3D11VertexShader* m_planeVS;
-   ID3D11PixelShader* m_redPS;
 
    std::vector<Mesh> scene;
 

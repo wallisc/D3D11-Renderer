@@ -1,10 +1,12 @@
 Texture2D m_colorMap : register(t0);
 Texture2D m_shadowMap : register(t1);
-RWTexture3D<float4> m_colorBuffer : register(u2);
-RWTexture2D<uint> m_colorBufferCounter : register(u3);
+RWTexture3D<float4> m_colorBuffer : register(u3);
+RWTexture2D<uint> m_colorBufferCounter : register(u4);
 SamplerState m_colorSampler : register(s0);
 
 #define MAX_DEPTH 8
+// TODO: Pass in via constant buffer
+#define LIGHT_POWER 0.7
 
 struct PixelShaderInput
 {
@@ -12,13 +14,16 @@ struct PixelShaderInput
   float3 worldPos : POSITIONT;
   float2 tex0 : TEXCOORD0;
   float4 norm : NORMAL0;
+  float4 transformedNorm : NORMAL1;
   float4 lpos: TEXCOORD1;
 };
 
 struct PixelShaderOutput
 {
   float4 color : COLOR0;
-  float4 norm : COLOR1;
+  float4 pos : COLOR1;
+  float4 norm : COLOR3;
+
 };
 
 cbuffer Material 
@@ -34,7 +39,6 @@ cbuffer Lights
    float4 lightPos;
    float4x4 lightMvp;
 };
-
 
 float3 phong( float3 norm, float3 eye, float3 lightDir, float3 amb, float3 dif, float3 spec, float shininess)
 {
@@ -82,7 +86,7 @@ PixelShaderOutput main( PixelShaderInput input ) : SV_TARGET
     {
        color = amb;
     }
-    
+    color = color * LIGHT_POWER;
 
     // Save the color into the color buffer to be used later for SSGI
 
@@ -93,8 +97,10 @@ PixelShaderOutput main( PixelShaderInput input ) : SV_TARGET
        = float4(color, input.pos.z);
     m_colorBufferCounter[uavCoord.xy].r++;
 
-    output.color = float4(color, 1.0);
-    output.norm = input.norm;
+    output.color = float4(color, 1.0f);
+    output.pos = float4(input.worldPos.xyz, 1.0f);
+    float3 normalizedN = normalize(input.norm.xyz);
+    output.norm = float4(normalizedN, 0.0f);
     
     return output;
 }
