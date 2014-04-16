@@ -7,4 +7,6 @@ id_rsa*
 #.vspx
 *.vsglog
 *.vsxproj.user
+*.sdf
+*.suo
 
