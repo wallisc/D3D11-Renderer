@@ -1,0 +1,10 @@
+*.opensdf
+*Debug/*
+*Release/*
+*x64/*
+*x32/*
+id_rsa*
+#.vspx
+*.vsglog
+*.vsxproj.user
+
