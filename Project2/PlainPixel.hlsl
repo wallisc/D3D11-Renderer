@@ -6,7 +6,7 @@ SamplerState m_colorSampler : register(s0);
 
 #define MAX_DEPTH 8
 // TODO: Pass in via constant buffer
-#define LIGHT_POWER 0.7
+#define LIGHT_POWER 0.5
 
 struct PixelShaderInput
 {
@@ -14,7 +14,6 @@ struct PixelShaderInput
   float3 worldPos : POSITIONT;
   float2 tex0 : TEXCOORD0;
   float4 norm : NORMAL0;
-  float4 transformedNorm : NORMAL1;
   float4 lpos: TEXCOORD1;
 };
 

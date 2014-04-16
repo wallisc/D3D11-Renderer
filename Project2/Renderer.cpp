@@ -296,10 +296,12 @@ void Renderer::Render()
    ID3D11ShaderResourceView *pSrv[] = {
       m_colorBufferSrv,
       m_pFirstPassPositions->GetShaderResourceView(),
-      m_pFirstPassNormals->GetShaderResourceView()};
+      m_pFirstPassNormals->GetShaderResourceView(),
+      m_pFirstPassColors->GetShaderResourceView()
+   };
 
    m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, pRtv, NULL, 1, 1, pUav, NULL);
-   m_d3dContext->PSSetShaderResources(1 , 3, pSrv);
+   m_d3dContext->PSSetShaderResources(1 , ARRAYSIZE(pSrv), pSrv);
 
 
    m_d3dContext->PSSetShader(m_globalIlluminationPS, 0, 0);
@@ -318,8 +320,8 @@ void Renderer::Render()
    m_d3dContext->Draw(3, 0);
 
    // Clear our the SRVs
-   ID3D11ShaderResourceView *pNullSrv[] = { NULL, NULL, NULL};
-   m_d3dContext->PSSetShaderResources(1 , 3, pNullSrv);
+   ID3D11ShaderResourceView *pNullSrv[] = { NULL, NULL, NULL, NULL };
+   m_d3dContext->PSSetShaderResources(1 , 4, pNullSrv);
    m_swapChain->Present(0, 0);
 }
 
