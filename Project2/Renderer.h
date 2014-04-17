@@ -3,12 +3,13 @@
 
 #include "D3DBase.h"
 #include "Mesh.h"
-#include "ObjReader.h"
 
 #include "ShadowMap.h"
 #include "ConstantBuffer.h"
 #include "RWRenderTarget.h"
 #include "PlaneRenderer.h"
+
+#include <assimp/scene.h>           // Output data structure
 
 #include <xnamath.h>
 #include <vector>
@@ -46,7 +47,7 @@ public:
    void UnloadContent();
 
 private:
-   bool CreateD3DMesh(ObjReader::Mesh *mesh, ObjReader::Material *mat, Mesh *d3dMesh);
+   bool CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, Mesh *d3dMesh);
    void DestroyD3DMesh(Mesh *d3dMesh);
 
    ID3D11VertexShader* m_solidColorVS;

@@ -4,6 +4,9 @@
 #include <cassert>
 #include <string>
 
+#include <assimp/Importer.hpp>      // C++ importer interface
+#include <assimp/postprocess.h>     // Post processing flags
+
 using std::vector;
 using std::string;
 
@@ -24,36 +27,48 @@ Renderer::Renderer() : D3DBase()
    m_camYAngle = 3.14f;
 }
 
-bool Renderer::CreateD3DMesh(ObjReader::Mesh *mesh, ObjReader::Material *material, Mesh *d3dMesh)
+bool Renderer::CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, Mesh *d3dMesh)
 {
-   vector<ObjReader::Vertices> *pVerts = &mesh->verts;
-   vector<ObjReader::Face> *pFaces = &mesh->faces;
-   VertexPos *vertices = new VertexPos[pVerts->size()]();
-   UINT *indices = new UINT[pFaces->size() * 3]();
+   UINT numVerts = pMesh->mNumVertices;
+   UINT numFaces = pMesh->mNumFaces;
+   UINT numIndices = numFaces * 3;
+   VertexPos *vertices = new VertexPos[numVerts]();
+   UINT *indices = new UINT[numIndices]();
 
    memset(d3dMesh, 0, sizeof(Mesh));
-
-   for (int vertIdx = 0; vertIdx < pVerts->size(); vertIdx++)
+   for (UINT vertIdx = 0; vertIdx < numVerts; vertIdx++)
    {
-      ObjReader::Vertices vert = (*pVerts)[vertIdx];
-      vertices[vertIdx].pos = XMFLOAT4(vert.x, vert.y, vert.z, 1.0f);
-      vertices[vertIdx].tex0 = XMFLOAT2(vert.uv.u, vert.uv.v);
-      vertices[vertIdx].norm = XMFLOAT4(vert.norm.x, vert.norm.y, vert.norm.z, 0.0f);
+      auto pVert = &pMesh->mVertices[vertIdx];
+      vertices[vertIdx].pos = XMFLOAT4(pVert->x, pVert->y, pVert->z, 1);
+
+      auto pNorm = &pMesh->mNormals[vertIdx];
+      vertices[vertIdx].norm = XMFLOAT4(pNorm->x, pNorm->y, pNorm->z, 0);
+
+      vertices[vertIdx].tex0 = XMFLOAT2(0, 0);
    }
 
-   d3dMesh->m_numIndices = static_cast<UINT>(pFaces->size() * 3);
-   for (int i = 0; i < pFaces->size(); i++)
+   d3dMesh->m_numIndices = numIndices;
+   for (UINT i = 0; i < numFaces; i++)
    {
-      ObjReader::Face face = (*pFaces)[i];
-      indices[i * 3] = face.v1;
-      indices[i * 3 + 1] = face.v2;
-      indices[i * 3 + 2] = face.v3;
+      auto pFace = &pMesh->mFaces[i];
+      assert(pFace->mNumIndices == 3);
+      indices[i * 3] = pFace->mIndices[0];
+      indices[i * 3 + 1] = pFace->mIndices[1];
+      indices[i * 3 + 2] = pFace->mIndices[2];
    }
+
+   auto pMat = pAssimpScene->mMaterials[pMesh->mMaterialIndex];
+   aiColor3D ambient, diffuse, specular;
+   float shininess;
+   pMat->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
+   pMat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+   pMat->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+   pMat->Get(AI_MATKEY_SHININESS_STRENGTH, shininess);
 
    // Fill in a buffer description.
    D3D11_BUFFER_DESC bufferDesc;
    bufferDesc.Usage           = D3D11_USAGE_DEFAULT;
-   bufferDesc.ByteWidth       = static_cast<UINT>(sizeof( unsigned int ) * 3 * pFaces->size());
+   bufferDesc.ByteWidth       = static_cast<UINT>(sizeof( unsigned int ) * numIndices);
    bufferDesc.BindFlags       = D3D11_BIND_INDEX_BUFFER;
    bufferDesc.CPUAccessFlags  = 0;
    bufferDesc.MiscFlags       = 0;
@@ -66,13 +81,16 @@ bool Renderer::CreateD3DMesh(ObjReader::Mesh *mesh, ObjReader::Material *materia
 
    // Create the buffer with the device.
    HRESULT d3dResult = m_d3dDevice->CreateBuffer( &bufferDesc, &InitData, &d3dMesh->m_indexBuffer );
-   if( FAILED( d3dResult ) ) return false;
-
+   if( FAILED( d3dResult ) ) 
+   {
+    	MessageBox(NULL, "CreateBuffer failed", "Error", MB_OK);
+      return false;
+   }
    PS_Material_Constant_Buffer psConstBuf;
-   psConstBuf.ambient = XMFLOAT4(material->ambient.r, material->ambient.g, material->ambient.b, 1.0f);
-   psConstBuf.diffuse = XMFLOAT4(material->diffuse.r, material->diffuse.g, material->diffuse.b, 1.0f);
-   psConstBuf.specular = XMFLOAT4(material->specular.r, material->specular.g, material->specular.b, 1.0f);
-   psConstBuf.shininess = material->shininess;
+   psConstBuf.ambient = XMFLOAT4(ambient.r, ambient.g, ambient.b, 1.0f);
+   psConstBuf.diffuse = XMFLOAT4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
+   psConstBuf.specular = XMFLOAT4(specular.r, specular.g, specular.b, 1.0f);
+   psConstBuf.shininess = shininess;
 
    D3D11_BUFFER_DESC constBufDesc;
    ZeroMemory(&constBufDesc, sizeof( constBufDesc ));
@@ -92,7 +110,7 @@ bool Renderer::CreateD3DMesh(ObjReader::Mesh *mesh, ObjReader::Material *materia
    ZeroMemory(&vertexDesc, sizeof( vertexDesc ));
    vertexDesc.Usage = D3D11_USAGE_DEFAULT;
    vertexDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-   vertexDesc.ByteWidth = static_cast<UINT>(sizeof( VertexPos ) * pVerts->size());
+   vertexDesc.ByteWidth = static_cast<UINT>(sizeof( VertexPos ) * numVerts);
 
    D3D11_SUBRESOURCE_DATA resourceData;
    ZeroMemory(&resourceData, sizeof( resourceData ));
@@ -102,6 +120,8 @@ bool Renderer::CreateD3DMesh(ObjReader::Mesh *mesh, ObjReader::Material *materia
 
    if ( FAILED(d3dResult) ) return false;
 
+   // TODO: Add texture support
+#if 0
    if (material->hasTexture)
    {
       d3dResult = D3DX11CreateShaderResourceViewFromFile(m_d3dDevice, 
@@ -112,8 +132,11 @@ bool Renderer::CreateD3DMesh(ObjReader::Mesh *mesh, ObjReader::Material *materia
                                                          0);
           //"Failed to load the texture image!");
    }
+#endif
+
    return true;
 }
+
 
 void Renderer::DestroyD3DMesh(Mesh *mesh) 
 {
@@ -264,7 +287,7 @@ void Renderer::Render()
 
       for (UINT i = 0; i < scene.size(); i++)
       {
-#if 0
+#if 1
          if( scene[i].m_texture )
          {
             m_d3dContext->PSSetShaderResources(0 , 1, &scene[i].m_texture);
@@ -355,23 +378,27 @@ bool Renderer::LoadContent()
 		DXTRACE_MSG("Failed to create the rasterizer state");
 		return false;
 	}
+   
+   // Create an instance of the Importer class
+  Assimp::Importer importer;
+  // And have it read the given file with some example postprocessing
+  // Usually - if speed is not the most important aspect for you - you'll 
+  // propably to request more postprocessing than we do in this example.
+  const aiScene* AssimpScene = importer.ReadFile( "cornell.obj", 
+        aiProcess_CalcTangentSpace       | 
+        aiProcess_Triangulate            |
+        aiProcess_JoinIdenticalVertices  |
+        aiProcess_SortByPType);
 
-   ObjReader::ObjData data;
-   string filename("cornell.obj");
-   int result = ObjReader::ObjReader::ConvertFromFile(filename, &data);
-   if (result != ObjReader::RESULT_SUCCESS) 
-   {
-      DXTRACE_MSG("Parsing for file failed");
-      return false;
-   }
-
-   for (UINT i = 0; i < data.meshes.size(); i++)
-   {
-      Mesh d3dMesh;
-      assert(data.matMap.count(data.meshes[i].materialName) > 0); 
-      if (!CreateD3DMesh(&data.meshes[i], &data.matMap[data.meshes[i].materialName], &d3dMesh)) return false;
-      scene.push_back(d3dMesh);
-   }
+  
+  for (UINT i = 0; i < AssimpScene->mNumMeshes; i++)
+  {
+     Mesh d3dMesh;
+     const aiMesh *pMesh = AssimpScene->mMeshes[i];
+     bool result = CreateD3DMesh(pMesh, AssimpScene, &d3dMesh);
+     if ( result != true ) return false;
+     scene.push_back(d3dMesh);
+  }
 
    ID3DBlob* vsBuffer = 0;
    BOOL compileResult = D3DUtils::CompileD3DShader("PlainVert.hlsl", "main", "vs_5_0", &vsBuffer);

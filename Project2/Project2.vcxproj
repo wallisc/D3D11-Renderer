@@ -68,7 +68,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3DBase.cpp" />
-    <ClCompile Include="ObjReader.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Renderer.cpp" />
   </ItemGroup>
@@ -77,7 +76,6 @@
     <ClInclude Include="D3DBase.h" />
     <ClInclude Include="D3DUtils.h" />
     <ClInclude Include="Mesh.h" />
-    <ClInclude Include="ObjReader.h" />
     <ClInclude Include="PlaneRenderer.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RWRenderTarget.h" />
@@ -139,8 +137,8 @@
     <LibraryPath>$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(IncludePath);$(DXSDK_DIR)Include;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;include\</IncludePath>
-    <LibraryPath>$(LibraryPath);$(DXSDK_DIR)Lib\x64;lib</LibraryPath>
+    <IncludePath>include;$(IncludePath);$(DXSDK_DIR)Include;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;include\</IncludePath>
+    <LibraryPath>lib\x64;$(LibraryPath);$(DXSDK_DIR)Lib\x64;lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(IncludePath);$(DXSDK_DIR)Include Library Directories: $(LibraryPath);$(DXSDK_DIR)Lib\x86</IncludePath>
@@ -169,7 +167,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>assimp.lib;d3d11.lib;d3dx11.lib;dxerr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>NotSet</SubSystem>
     </Link>
   </ItemDefinitionGroup>

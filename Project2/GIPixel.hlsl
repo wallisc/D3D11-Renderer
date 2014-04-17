@@ -15,9 +15,9 @@ RWTexture2D<uint> m_colorBufferCount : register(u1);
 #define NUM_SAMPLES (NUM_SAMPLES_SQRT * NUM_SAMPLES_SQRT)
 #define SAMPLE_DISTANCE 2.0
 
-#define NUM_GI_SAMPLES_SQRT 4
+#define NUM_GI_SAMPLES_SQRT 6
 #define NUM_GI_SAMPLES (NUM_SAMPLES_SQRT * NUM_SAMPLES_SQRT)
-#define GI_SAMPLE_DISTANCE 5.0
+#define GI_SAMPLE_DISTANCE 30.0
 
 #define TOTAL_GI_SAMPLES (NUM_GI_SAMPLES + NUM_SAMPLES)
 
@@ -47,6 +47,7 @@ float4 main(VertexOutput input) : SV_TARGET
    {
       for( int ySample = -NUM_SAMPLES_SQRT / 2; ySample < NUM_SAMPLES_SQRT / 2 + 1; ySample++ )
       {
+
          float2 intersectCoord = input.tex + SAMPLE_DISTANCE * float2(xSample, ySample) / float2(WIDTH, HEIGHT);
          if (xSample == ySample && xSample == 0) continue;
 
@@ -69,7 +70,10 @@ float4 main(VertexOutput input) : SV_TARGET
    {
       for( int ySample = -NUM_GI_SAMPLES_SQRT / 2; ySample < NUM_GI_SAMPLES_SQRT / 2 + 1; ySample++ )
       {
-         float2 intersectCoord = input.tex + GI_SAMPLE_DISTANCE * float2(xSample, ySample) / float2(WIDTH, HEIGHT);
+         float r1 = rand((float2(xSample, ySample) / float2(WIDTH, HEIGHT)) + input.tex);
+         float r2 = rand((float2(xSample, ySample) / float2(WIDTH, HEIGHT)) + input.tex);
+
+         float2 intersectCoord = input.tex + GI_SAMPLE_DISTANCE * float2(xSample, ySample) * float2(r1, r2) / float2(WIDTH, HEIGHT);
          if (xSample == ySample && xSample == 0) continue;
 
          // Ambient occlusion and GI work

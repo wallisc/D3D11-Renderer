@@ -16,9 +16,6 @@
     <Filter Include="Source Files\Shaders">
       <UniqueIdentifier>{ffdd0089-4dc2-41e9-a5f3-72a87ae3d8b4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Parser">
-      <UniqueIdentifier>{d888aab1-e8ca-4066-894c-414900b9c10e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\D3DLayer">
       <UniqueIdentifier>{d87e3be0-2ee7-4276-9ae3-8aca5931c127}</UniqueIdentifier>
     </Filter>
@@ -58,9 +55,6 @@
     <ClCompile Include="Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ObjReader.cpp">
-      <Filter>Source Files\Parser</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DBase.h">
@@ -71,9 +65,6 @@
     </ClInclude>
     <ClInclude Include="Renderer.h">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ObjReader.h">
-      <Filter>Source Files\Parser</Filter>
     </ClInclude>
     <ClInclude Include="ConstantBuffer.h">
       <Filter>Source Files\D3DLayer</Filter>
