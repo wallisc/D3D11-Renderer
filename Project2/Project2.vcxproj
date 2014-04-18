@@ -67,11 +67,13 @@
     <Image Include="..\test.jpg" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="D3DBase.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="D3DBase.h" />
     <ClInclude Include="D3DUtils.h" />

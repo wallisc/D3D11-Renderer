@@ -21,10 +21,6 @@ struct VertexPos
 
 Renderer::Renderer() : D3DBase()
 {
-   m_camX = 0.0f;
-   m_camY = -1.0f;
-   m_camZ = -3.5f;
-   m_camYAngle = 3.14f;
 }
 
 bool Renderer::CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, Mesh *d3dMesh)
@@ -151,7 +147,7 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
    static const FLOAT ROTATE_SPEED = 0.02f;
 
    float tx = 0.0f, ty = 0.0f, tz = 0.0f;
-   float ry = 0.0f;
+   float ry = 0.0f, rx = 0.0f;
 
    if( keyInputArray['Q'])
    {
@@ -163,41 +159,49 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
    }
    if( keyInputArray['W'])
    {
-      ty -= MOVE_SPEED; 
+      ty += MOVE_SPEED; 
    }
    if( keyInputArray['S'])
    {
-      ty += MOVE_SPEED; 
+      ty -= MOVE_SPEED; 
    }
    if( keyInputArray['A'])
    {
-      tx += MOVE_SPEED; 
+      tx -= MOVE_SPEED; 
    }
    if( keyInputArray['D'])
    {
-      tx -= MOVE_SPEED; 
+      tx += MOVE_SPEED; 
    }
    if( keyInputArray['J'])
    {
-      ry += ROTATE_SPEED; 
+      ry -= ROTATE_SPEED; 
    }
    if( keyInputArray['L'])
    {
-      ry -= ROTATE_SPEED; 
+      ry += ROTATE_SPEED; 
+   }
+   if( keyInputArray['K'])
+   {
+      rx -= ROTATE_SPEED; 
+   }
+   if( keyInputArray['I'])
+   {
+      rx += ROTATE_SPEED; 
    }
 
-   m_camX += tx;
-   m_camY += ty;
-   m_camZ += tz;
-   m_camYAngle += ry;
 
-   XMMATRIX perspective = XMMatrixPerspectiveFovLH(3.14f * 0.4f, (FLOAT)m_width / (FLOAT)m_height, .5f, 100.0f);
    XMVECTOR yAxis(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
    XMVECTOR xAxis(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f));
+   XMFLOAT3 pos(tx, ty, tz);
 
-   XMMATRIX trans = XMMatrixTranslation(m_camX, m_camY, m_camZ);
-   XMMATRIX rotation = XMMatrixRotationAxis(yAxis, m_camYAngle);
-   XMMATRIX view = trans * rotation;
+   m_pCamera->MoveCamera(XMLoadFloat3(&pos));
+   m_pCamera->RotateCameraHorizontally(ry);
+   m_pCamera->RotateCameraVertically(rx);
+
+   XMMATRIX perspective = XMMatrixPerspectiveFovLH(3.14f * 0.4f, (FLOAT)m_width / (FLOAT)m_height, .5f, 100.0f);
+
+   XMMATRIX view = *m_pCamera->GetViewMatrix();
    m_vsTransConstBuf.mvp = view * perspective;
 
    XMMATRIX shadowTrans = XMMatrixTranslation(-m_lightPosition.x, -m_lightPosition.y, -m_lightPosition.z);
@@ -360,6 +364,7 @@ bool Renderer::LoadContent()
 
    m_lightPosition = LIGHT_POSITION;
 
+
    D3D11_RASTERIZER_DESC rasterizerDesc;
    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
    rasterizerDesc.CullMode = D3D11_CULL_BACK;
@@ -398,6 +403,28 @@ bool Renderer::LoadContent()
      bool result = CreateD3DMesh(pMesh, AssimpScene, &d3dMesh);
      if ( result != true ) return false;
      scene.push_back(d3dMesh);
+  }
+
+  if (AssimpScene->HasCameras())
+  {
+     assert(AssimpScene->mNumCameras == 1);
+     auto pCam = AssimpScene->mCameras[0];
+     auto pos = pCam->mPosition;
+     auto lookAt = pCam->mLookAt;
+     auto up = pCam->mUp;
+     
+     XMFLOAT3 fPos(pos.x, pos.y, pos.z);
+     XMFLOAT3 fLookAt(lookAt.x, lookAt.y, lookAt.z);
+     XMFLOAT3 fUp(up.x, up.y, up.z);
+
+     m_pCamera = new Camera(XMLoadFloat3(&fPos), XMLoadFloat3(&fLookAt), XMLoadFloat3(&fUp));
+  }
+  else
+  {
+     XMFLOAT3 pos(0.0f, 1.0f, 3.5f);
+     XMFLOAT3 lookAt(0.0f, 0.0f, -1.0f);
+     XMFLOAT3 up(0.0f, 1.0f, 0.0f);
+     m_pCamera = new Camera(XMLoadFloat3(&pos), XMLoadFloat3(&lookAt), XMLoadFloat3(&up));
   }
 
    ID3DBlob* vsBuffer = 0;
@@ -563,6 +590,7 @@ void Renderer::UnloadContent()
    delete m_pTransformConstants;
    delete m_pLightConstants;
    delete m_pPlaneRenderer;
+   delete m_pCamera;
 
    for(UINT i = 0; i < scene.size(); i++)
    {

@@ -8,6 +8,7 @@
 #include "ConstantBuffer.h"
 #include "RWRenderTarget.h"
 #include "PlaneRenderer.h"
+#include "Camera.h"
 
 #include <assimp/scene.h>           // Output data structure
 
@@ -92,8 +93,8 @@ private:
    XMMATRIX m_camViewTrans;
    XMFLOAT4 m_lightPosition;
 
-   float m_camX, m_camY, m_camZ;
-   float m_camYAngle;
+   Camera *m_pCamera;
+
    UINT m_numIndices;
 };
 
