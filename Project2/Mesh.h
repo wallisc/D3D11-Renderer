@@ -5,9 +5,7 @@ class Mesh
 public:
    ID3D11Buffer* m_vertexBuffer;
    ID3D11Buffer* m_indexBuffer;
-   ID3D11Buffer* m_materialConstantBuffer;
-
-   ID3D11ShaderResourceView *m_texture;
+   UINT m_MaterialIndex;
 
    unsigned int  m_numIndices;
 };

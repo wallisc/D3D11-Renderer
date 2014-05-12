@@ -10,7 +10,7 @@
 using std::vector;
 using std::string;
 
-const XMFLOAT4 LIGHT_POSITION(0.0f, 1.9f, 0.0f, 1.0f);
+const XMFLOAT4 LIGHT_DIRECTION(0.0f, 1.0f, 0.0f, 0.0f);
 
 struct VertexPos 
 {
@@ -21,7 +21,84 @@ struct VertexPos
 
 Renderer::Renderer() : D3DBase()
 {
+
 }
+
+bool Renderer::InitializeMatMap(const aiScene *pAssimpScene)
+{
+   m_matList.clear();
+   for( UINT i = 0; i < pAssimpScene->mNumMaterials; i++ ) 
+   {
+      aiMaterial *pMat = pAssimpScene->mMaterials[i];
+      aiColor3D ambient, diffuse, specular;
+      float shininess;
+
+      pMat->Get(AI_MATKEY_COLOR_AMBIENT, ambient);
+      pMat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse);
+      pMat->Get(AI_MATKEY_COLOR_SPECULAR, specular);
+      pMat->Get(AI_MATKEY_SHININESS_STRENGTH, shininess);
+
+      PS_Material_Constant_Buffer psConstBuf;
+      psConstBuf.ambient = XMFLOAT4(ambient.r, ambient.g, ambient.b, 1.0f);
+      psConstBuf.ambient = XMFLOAT4(.2f, .2f, .2f, 1.0f);   
+      psConstBuf.diffuse = XMFLOAT4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
+      psConstBuf.specular = XMFLOAT4(specular.r, specular.g, specular.b, 1.0f);
+      psConstBuf.shininess = shininess;
+
+      D3D11_BUFFER_DESC constBufDesc;
+      ZeroMemory(&constBufDesc, sizeof( constBufDesc ));
+      constBufDesc.Usage = D3D11_USAGE_DEFAULT;
+      constBufDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+      constBufDesc.ByteWidth = sizeof( PS_Material_Constant_Buffer );
+
+      D3D11_SUBRESOURCE_DATA constResourceData;
+      ZeroMemory(&constResourceData, sizeof( constResourceData ));
+      constResourceData.pSysMem = &psConstBuf;
+
+      Material matInfo;
+      HRESULT d3dResult = m_d3dDevice->CreateBuffer( &constBufDesc, &constResourceData, &matInfo.m_materialConstantBuffer);
+
+      if ( FAILED(d3dResult) ) return false;
+
+      UINT texCount = pMat->GetTextureCount(aiTextureType_DIFFUSE);
+
+
+      if ( texCount > 0 )
+      {
+         aiString path;
+         assert(texCount == 1);
+         pMat->GetTexture(aiTextureType_DIFFUSE, 0, &path);
+         if( path.C_Str()[path.length - 1] == 'g' )
+         {
+            HRESULT result = D3DX11CreateShaderResourceViewFromFile(m_d3dDevice, 
+                                                               path.C_Str(),
+                                                               0, 
+                                                               0, 
+                                                               &matInfo.m_texture, 
+                                                               0);
+            HR(result);
+         }
+      }
+      else
+      {
+         matInfo.m_texture = NULL;
+      }
+      m_matList.push_back(matInfo);
+   }
+}
+
+void Renderer::DestroyMatMap()
+{
+   for( UINT i = 0; i < m_matList.size(); i++ )
+   {
+      m_matList[i].m_materialConstantBuffer->Release();
+      if( m_matList[i].m_texture )
+      {
+         m_matList[i].m_texture->Release();
+      }
+   }
+}
+
 
 bool Renderer::CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, Mesh *d3dMesh)
 {
@@ -31,6 +108,7 @@ bool Renderer::CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, M
    VertexPos *vertices = new VertexPos[numVerts]();
    UINT *indices = new UINT[numIndices]();
 
+   assert(*pMesh->mNumUVComponents == 2);
    memset(d3dMesh, 0, sizeof(Mesh));
    for (UINT vertIdx = 0; vertIdx < numVerts; vertIdx++)
    {
@@ -39,8 +117,9 @@ bool Renderer::CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, M
 
       auto pNorm = &pMesh->mNormals[vertIdx];
       vertices[vertIdx].norm = XMFLOAT4(pNorm->x, pNorm->y, pNorm->z, 0);
-
-      vertices[vertIdx].tex0 = XMFLOAT2(0, 0);
+      
+      auto pUV = &pMesh->mTextureCoords[0][vertIdx];
+      vertices[vertIdx].tex0 = XMFLOAT2(pUV->x, pUV->y);
    }
 
    d3dMesh->m_numIndices = numIndices;
@@ -82,26 +161,7 @@ bool Renderer::CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, M
     	MessageBox(NULL, "CreateBuffer failed", "Error", MB_OK);
       return false;
    }
-   PS_Material_Constant_Buffer psConstBuf;
-   psConstBuf.ambient = XMFLOAT4(ambient.r, ambient.g, ambient.b, 1.0f);
-   psConstBuf.diffuse = XMFLOAT4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
-   psConstBuf.specular = XMFLOAT4(specular.r, specular.g, specular.b, 1.0f);
-   psConstBuf.shininess = shininess;
-
-   D3D11_BUFFER_DESC constBufDesc;
-   ZeroMemory(&constBufDesc, sizeof( constBufDesc ));
-   constBufDesc.Usage = D3D11_USAGE_DEFAULT;
-   constBufDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-   constBufDesc.ByteWidth = sizeof( PS_Material_Constant_Buffer );
-
-   D3D11_SUBRESOURCE_DATA constResourceData;
-   ZeroMemory(&constResourceData, sizeof( constResourceData ));
-   constResourceData.pSysMem = &psConstBuf;
-
-   d3dResult = m_d3dDevice->CreateBuffer( &constBufDesc, &constResourceData, &d3dMesh->m_materialConstantBuffer);
-
-   if ( FAILED(d3dResult) ) return false;
-
+   
    D3D11_BUFFER_DESC vertexDesc;
    ZeroMemory(&vertexDesc, sizeof( vertexDesc ));
    vertexDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -115,20 +175,8 @@ bool Renderer::CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, M
    d3dResult = m_d3dDevice->CreateBuffer( &vertexDesc, &resourceData, &d3dMesh->m_vertexBuffer);
 
    if ( FAILED(d3dResult) ) return false;
-
-   // TODO: Add texture support
-#if 0
-   if (material->hasTexture)
-   {
-      d3dResult = D3DX11CreateShaderResourceViewFromFile(m_d3dDevice, 
-                                                         material->textureName.c_str(),
-                                                         0, 
-                                                         0, 
-                                                         &d3dMesh->m_texture, 
-                                                         0);
-          //"Failed to load the texture image!");
-   }
-#endif
+   
+   d3dMesh->m_MaterialIndex = pMesh->mMaterialIndex;
 
    return true;
 }
@@ -138,7 +186,6 @@ void Renderer::DestroyD3DMesh(Mesh *mesh)
 {
    if( mesh->m_vertexBuffer ) mesh->m_vertexBuffer->Release();
    if( mesh->m_indexBuffer ) mesh->m_indexBuffer->Release();
-   if( mesh->m_materialConstantBuffer) mesh->m_materialConstantBuffer->Release();
 }
 
 void Renderer::Update(FLOAT dt, BOOL *keyInputArray) 
@@ -148,30 +195,32 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
 
    float tx = 0.0f, ty = 0.0f, tz = 0.0f;
    float ry = 0.0f, rx = 0.0f;
+   float lightRotation = 0.0f;
+   const float MoveUnit = m_cameraUnit * MOVE_SPEED;
 
    if( keyInputArray['Q'])
    {
-      tz += MOVE_SPEED; 
+      tz += m_cameraUnit;
    }
    if( keyInputArray['E'])
    {
-      tz -= MOVE_SPEED; 
+      tz -= m_cameraUnit; 
    }
    if( keyInputArray['W'])
    {
-      ty += MOVE_SPEED; 
+      ty += m_cameraUnit; 
    }
    if( keyInputArray['S'])
    {
-      ty -= MOVE_SPEED; 
+      ty -= m_cameraUnit; 
    }
    if( keyInputArray['A'])
    {
-      tx -= MOVE_SPEED; 
+      tx -= m_cameraUnit; 
    }
    if( keyInputArray['D'])
    {
-      tx += MOVE_SPEED; 
+      tx += m_cameraUnit; 
    }
    if( keyInputArray['J'])
    {
@@ -189,28 +238,51 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
    {
       rx += ROTATE_SPEED; 
    }
+   
+   if( keyInputArray['Z'])
+   {
+      lightRotation += ROTATE_SPEED;
+   }
+   if( keyInputArray['C'])
+   {
+      lightRotation -= ROTATE_SPEED;
+   }
 
 
    XMVECTOR yAxis(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
    XMVECTOR xAxis(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f));
+   XMVECTOR zAxis(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f));
+
    XMFLOAT3 pos(tx, ty, tz);
 
    m_pCamera->MoveCamera(XMLoadFloat3(&pos));
    m_pCamera->RotateCameraHorizontally(ry);
    m_pCamera->RotateCameraVertically(rx);
 
-   XMMATRIX perspective = XMMatrixPerspectiveFovLH(3.14f * 0.4f, (FLOAT)m_width / (FLOAT)m_height, .5f, 100.0f);
+   XMMATRIX perspective = XMMatrixPerspectiveFovLH(m_fieldOfView, (FLOAT)m_width / (FLOAT)m_height, m_nearPlane, m_farPlane);
 
    XMMATRIX view = *m_pCamera->GetViewMatrix();
    m_vsTransConstBuf.mvp = view * perspective;
 
-   XMMATRIX shadowTrans = XMMatrixTranslation(-m_lightPosition.x, -m_lightPosition.y, -m_lightPosition.z);
-   XMMATRIX shadowRotation = XMMatrixRotationAxis(xAxis, 3.14f / 2.0f) * XMMatrixRotationAxis(yAxis, 3.14f);
-   XMMATRIX shadowView = shadowTrans * shadowRotation;
-   m_shadowMapTransform.mvp = shadowView * perspective;
+   //XMMATRIX shadowTrans = XMMatrixTranslation(-m_lightPosition.x, -m_lightPosition.y, -m_lightPosition.z);
+   //XMMATRIX shadowRotation = XMMatrixRotationAxis(xAxis, 3.14f / 2.0f) * XMMatrixRotationAxis(yAxis, 3.14f);
+   //XMMATRIX shadowView = shadowTrans * shadowRotation;
+   //m_shadowMapTransform.mvp = shadowView * perspective;
+   //m_psLightConstBuf.mvp = m_shadowMapTransform.mvp;
+   
+   XMMATRIX lightRotationMatrix = XMMatrixRotationAxis(xAxis, lightRotation);
+   XMVECTOR lightDirVector = XMVector4Normalize(XMVector4Transform(XMLoadFloat4(&m_lightDirection), lightRotationMatrix));
+   XMStoreFloat4(&m_lightDirection, lightDirVector);
+   m_psLightConstBuf.direction = m_lightDirection;
 
-   m_psLightConstBuf.position = m_lightPosition;
-   m_psLightConstBuf.mvp = m_shadowMapTransform.mvp;
+   char buffer[200];
+   wchar_t wString[4096];
+   
+   sprintf_s(buffer, "Dir: %f, %f, %f\n", m_lightDirection.x, m_lightDirection.y, m_lightDirection.z);
+   MultiByteToWideChar(CP_ACP, 0, buffer, -1, wString, 4096);
+
+   OutputDebugStringW(wString);
+
 }
 
 void Renderer::Render() 
@@ -247,67 +319,43 @@ void Renderer::Render()
    m_d3dContext->VSSetShader(m_solidColorVS, 0, 0);
 
    m_pLightConstants->SetData(m_d3dContext, &m_psLightConstBuf);
-   ID3D11Buffer *pCbs[] = { m_pLightConstants->GetConstantBuffer() };
-   m_d3dContext->PSSetConstantBuffers(1 , 1, pCbs);
-   m_d3dContext->VSSetConstantBuffers(1 , 1, pCbs);
+   ID3D11Buffer *pFirstPassCbs[] = { m_pLightConstants->GetConstantBuffer() };
+   m_d3dContext->PSSetConstantBuffers(1 , 1, pFirstPassCbs);
+   m_d3dContext->VSSetConstantBuffers(1 , 1, pFirstPassCbs);
 
    m_d3dContext->PSSetSamplers(0 , 1, &m_colorMapSampler);
 
-   // Make sure the first SRV is cleared out
-   ID3D11ShaderResourceView *pSrvs = { NULL };
-   m_d3dContext->PSSetShaderResources(0 , 1, &pSrvs);
+   ID3D11UnorderedAccessView *pFirstPassUav[] = { m_uav, m_colorBufferDepthUAV };
+   ID3D11RenderTargetView *pFirstPassRtv[] = { 
+      m_pFirstPassColors->GetRenderTargetView(),
+      m_pFirstPassPositions->GetRenderTargetView(),
+      m_pFirstPassNormals->GetRenderTargetView() };
+         
+   m_pTransformConstants->SetData(m_d3dContext, &m_vsTransConstBuf);
+         
+   m_d3dContext->PSSetShader(m_solidColorPS, 0, 0);
+   m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(3, pFirstPassRtv, m_DepthStencilView, 3, 2, pFirstPassUav, NULL);
 
-   for (UINT i = 0; i < 2; i++)
+   ID3D11Buffer *pCbs[] = { m_pTransformConstants->GetConstantBuffer() };
+   m_d3dContext->VSSetConstantBuffers(0 , 1, pCbs);
+
+   for (UINT i = 0; i < scene.size(); i++)
    {
-      if (i == 0)
+      auto pMat = &m_matList[scene[i].m_MaterialIndex];
+      if( pMat->m_texture )
       {
-         ID3D11RenderTargetView *pRtvs = { NULL };
-         ID3D11ShaderResourceView *pSrvs = { NULL };
-
-         m_pTransformConstants->SetData(m_d3dContext, &m_shadowMapTransform);
-
-
-         m_d3dContext->PSSetShader(m_solidColorPSNoShadow, 0, 0);
-         m_d3dContext->PSSetShaderResources(1 , 1, &pSrvs);
-         m_d3dContext->OMSetRenderTargets(1, &pRtvs, m_pShadowMap->GetDepthStencilView());
+         m_d3dContext->PSSetShaderResources(0 , 1, &pMat->m_texture);
+         m_d3dContext->PSSetShader(m_texturePS, 0, 0);
       }
-      else 
+      else
       {
-         ID3D11ShaderResourceView *pSrv = m_pShadowMap->GetShaderResourceView();
-         ID3D11UnorderedAccessView *pUav[] = { m_uav, m_colorBufferDepthUAV };
-         ID3D11RenderTargetView *pRtv[] = { 
-            m_pFirstPassColors->GetRenderTargetView(),
-            m_pFirstPassPositions->GetRenderTargetView(),
-            m_pFirstPassNormals->GetRenderTargetView() };
-         
-         m_pTransformConstants->SetData(m_d3dContext, &m_vsTransConstBuf);
-         
          m_d3dContext->PSSetShader(m_solidColorPS, 0, 0);
-         m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(3, pRtv, m_DepthStencilView, 3, 2, pUav, NULL);
-         m_d3dContext->PSSetShaderResources(1 , 1, &pSrv);
       }
-      ID3D11Buffer *pCbs[] = { m_pTransformConstants->GetConstantBuffer() };
-      m_d3dContext->VSSetConstantBuffers(0 , 1, pCbs);
 
-      for (UINT i = 0; i < scene.size(); i++)
-      {
-#if 1
-         if( scene[i].m_texture )
-         {
-            m_d3dContext->PSSetShaderResources(0 , 1, &scene[i].m_texture);
-            m_d3dContext->PSSetShader(m_texturePS, 0, 0);
-         }
-         else
-         {
-            m_d3dContext->PSSetShader(m_solidColorPS, 0, 0);
-         }
-#endif
-
-         m_d3dContext->IASetVertexBuffers( 0, 1, &scene[i].m_vertexBuffer, &stride,  &offset);
-         m_d3dContext->IASetIndexBuffer(scene[i].m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-         m_d3dContext->PSSetConstantBuffers(0 , 1, &scene[i].m_materialConstantBuffer);
-         m_d3dContext->DrawIndexed(scene[i].m_numIndices, 0, 0);
-      }
+      m_d3dContext->IASetVertexBuffers( 0, 1, &scene[i].m_vertexBuffer, &stride,  &offset);
+      m_d3dContext->IASetIndexBuffer(scene[i].m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+      m_d3dContext->PSSetConstantBuffers(0 , 1, &pMat->m_materialConstantBuffer);
+      m_d3dContext->DrawIndexed(scene[i].m_numIndices, 0, 0);
    }
    
    // Post processing passes generate a plane using geometry generated in the VS
@@ -362,9 +410,6 @@ bool Renderer::LoadContent()
    m_pPostProcessingRtv = new RWRenderTarget(m_d3dDevice, m_width, m_height);
    m_pPlaneRenderer = new PlaneRenderer(m_d3dDevice);
 
-   m_lightPosition = LIGHT_POSITION;
-
-
    D3D11_RASTERIZER_DESC rasterizerDesc;
    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
    rasterizerDesc.CullMode = D3D11_CULL_BACK;
@@ -389,13 +434,18 @@ bool Renderer::LoadContent()
   // And have it read the given file with some example postprocessing
   // Usually - if speed is not the most important aspect for you - you'll 
   // propably to request more postprocessing than we do in this example.
-  const aiScene* AssimpScene = importer.ReadFile( "cornell.obj", 
+  const aiScene* AssimpScene = importer.ReadFile( "sponza.obj", 
         aiProcess_CalcTangentSpace       | 
         aiProcess_Triangulate            |
         aiProcess_JoinIdenticalVertices  |
+        aiProcess_MakeLeftHanded         | 
+        aiProcess_FlipUVs                | 
+        aiProcess_FlipWindingOrder       | 
+        aiProcess_GenSmoothNormals       |
+        aiProcess_PreTransformVertices   |
         aiProcess_SortByPType);
 
-  
+  InitializeMatMap( AssimpScene );
   for (UINT i = 0; i < AssimpScene->mNumMeshes; i++)
   {
      Mesh d3dMesh;
@@ -418,13 +468,40 @@ bool Renderer::LoadContent()
      XMFLOAT3 fUp(up.x, up.y, up.z);
 
      m_pCamera = new Camera(XMLoadFloat3(&fPos), XMLoadFloat3(&fLookAt), XMLoadFloat3(&fUp));
+     m_nearPlane = pCam->mClipPlaneNear;
+     m_farPlane = pCam->mClipPlaneFar;
+     m_cameraUnit = 50.0f;
+     m_fieldOfView = pCam->mHorizontalFOV * 2.0f / pCam->mAspect;
   }
   else
   {
-     XMFLOAT3 pos(0.0f, 1.0f, 3.5f);
-     XMFLOAT3 lookAt(0.0f, 0.0f, -1.0f);
+     XMFLOAT3 pos(0.0f, 1.0f, 0.0f);
+     XMFLOAT3 lookAt(1.0f, 0.0f, 0.0f);
      XMFLOAT3 up(0.0f, 1.0f, 0.0f);
      m_pCamera = new Camera(XMLoadFloat3(&pos), XMLoadFloat3(&lookAt), XMLoadFloat3(&up));
+
+     m_nearPlane = 1.0;
+     m_farPlane = 10000.0f;
+     m_cameraUnit = 10.0f;
+     m_fieldOfView = 3.14 / 2.0f;
+  }
+
+    m_pLightConstants = new ConstantBuffer<PS_Light_Constant_Buffer>(m_d3dDevice);
+
+  if (AssimpScene->HasLights())
+  {
+#if 0
+     assert(AssimpScene->mNumLights == 1);
+     auto pLight = AssimpScene->mLights[0];
+     
+     assert(pLight->mType == aiLightSource_POINT);
+     auto lightPos = pLight->mPosition;
+     m_lightPosition = XMFLOAT4(lightPos.x, lightPos.y, lightPos.z, 1.0f);
+#endif
+  }
+  else
+  {
+      m_lightDirection = LIGHT_DIRECTION;
   }
 
    ID3DBlob* vsBuffer = 0;
@@ -510,11 +587,6 @@ bool Renderer::LoadContent()
 
    m_pTransformConstants = new ConstantBuffer<VS_Transformation_Constant_Buffer>(m_d3dDevice);
 
-   PS_Light_Constant_Buffer psConstBuf;
-   psConstBuf.position = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-
-   m_pLightConstants = new ConstantBuffer<PS_Light_Constant_Buffer>(m_d3dDevice);
-
    D3D11_SAMPLER_DESC colorMapDesc;
    ZeroMemory( &colorMapDesc, sizeof( colorMapDesc ));
    colorMapDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -592,6 +664,7 @@ void Renderer::UnloadContent()
    delete m_pPlaneRenderer;
    delete m_pCamera;
 
+   DestroyMatMap();
    for(UINT i = 0; i < scene.size(); i++)
    {
       DestroyD3DMesh(&scene[i]);

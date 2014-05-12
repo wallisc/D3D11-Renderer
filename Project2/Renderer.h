@@ -3,6 +3,8 @@
 
 #include "D3DBase.h"
 #include "Mesh.h"
+#include "Material.h"
+
 
 #include "ShadowMap.h"
 #include "ConstantBuffer.h"
@@ -14,6 +16,7 @@
 
 #include <xnamath.h>
 #include <vector>
+#include <map>
 
 #define MAX_COLOR_BUFFER_DEPTH 8
 
@@ -25,8 +28,7 @@ struct VS_Transformation_Constant_Buffer
 __declspec(align(16))
 struct PS_Light_Constant_Buffer
 {
-   XMFLOAT4 position;
-   XMMATRIX mvp;
+   XMFLOAT4 direction;
 };
 
 __declspec(align(16))
@@ -48,7 +50,11 @@ public:
    void UnloadContent();
 
 private:
+   bool InitializeMatMap(const aiScene *pAssimpScene);
+   void DestroyMatMap();
+
    bool CreateD3DMesh(const aiMesh *pMesh, const aiScene *pAssimpScene, Mesh *d3dMesh);
+
    void DestroyD3DMesh(Mesh *d3dMesh);
 
    ID3D11VertexShader* m_solidColorVS;
@@ -80,6 +86,7 @@ private:
    ID3D11ShaderResourceView *m_colorBufferSrv;
 
    std::vector<Mesh> scene;
+   std::vector<Material> m_matList;
 
    ShadowMap *m_pShadowMap;
    VS_Transformation_Constant_Buffer m_shadowMapTransform;
@@ -91,9 +98,17 @@ private:
    PS_Light_Constant_Buffer m_psLightConstBuf;
 
    XMMATRIX m_camViewTrans;
-   XMFLOAT4 m_lightPosition;
+   XMFLOAT4 m_lightDirection;
 
    Camera *m_pCamera;
+
+
+   float m_cameraUnit;
+
+   // TODO: Encapsulate in a perspective object
+   float m_nearPlane;
+   float m_farPlane;
+   float m_fieldOfView; // vertical FOV in radians
 
    UINT m_numIndices;
 };

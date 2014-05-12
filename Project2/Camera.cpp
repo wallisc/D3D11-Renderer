@@ -2,10 +2,11 @@
 #include "Camera.h"
 
 Camera::Camera(XMVECTOR position, XMVECTOR lookAt, XMVECTOR up) :
-   m_pos(position), m_lookAt(lookAt), m_up(up), m_CameraDirty(TRUE) 
+   m_pos(position), m_CameraDirty(TRUE) 
 {
-   assert(XMVectorGetX(XMVector3Length(up)) > .9 && XMVectorGetX(XMVector3Length(up)) < 1.1 );
-   assert(XMVectorGetX(XMVector3Length(lookAt)) > .9 && XMVectorGetX(XMVector3Length(lookAt)) < 1.1 );
+   m_up = XMVector3Normalize(up);
+   m_lookAt = XMVector3Normalize(lookAt);
+
 
    m_left = XMVector3Normalize(XMVector3Cross(lookAt, up));
 }

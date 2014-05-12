@@ -1,5 +1,4 @@
 Texture2D m_colorMap : register(t0);
-Texture2D m_shadowMap : register(t1);
 RWTexture3D<float4> m_colorBuffer : register(u3);
 RWTexture2D<uint> m_colorBufferCounter : register(u4);
 SamplerState m_colorSampler : register(s0);
@@ -14,7 +13,6 @@ struct PixelShaderInput
   float3 worldPos : POSITIONT;
   float2 tex0 : TEXCOORD0;
   float4 norm : NORMAL0;
-  float4 lpos: TEXCOORD1;
 };
 
 struct PixelShaderOutput
@@ -35,8 +33,7 @@ cbuffer Material
 
 cbuffer Lights 
 {
-   float4 lightPos;
-   float4x4 lightMvp;
+   float4 lightDir;
 };
 
 float3 phong( float3 norm, float3 eye, float3 lightDir, float3 amb, float3 dif, float3 spec, float shininess)
@@ -56,7 +53,6 @@ float3 phong( float3 norm, float3 eye, float3 lightDir, float3 amb, float3 dif, 
 PixelShaderOutput main( PixelShaderInput input ) : SV_TARGET
 {
     PixelShaderOutput output;
-    float3 lightDir = normalize(lightPos.xyz - float3(input.worldPos.xyz));
     float3 n = normalize(float3(input.norm.xyz));
     float3 e = -normalize(float3(input.pos.xyz));
 
@@ -64,31 +60,12 @@ PixelShaderOutput main( PixelShaderInput input ) : SV_TARGET
     float3 dif = float3(diffuse.xyz);
     float3 spec = float3(specular.xyz);
 
-    input.lpos.xyz /= input.lpos.w;
-    input.lpos.x = input.lpos.x / 2.0 + 0.5;
-    input.lpos.y = input.lpos.y / -2.0 + 0.5;
-
-    float depthValue = 1.0;
-    // TODO: Replace this with a sampler
-    if (input.lpos.x > 0 && input.lpos.x < 1 && input.lpos.y > 0 && input.lpos.y < 1
-        && input.lpos.z > 0.1 && input.lpos.z < 1)
-    {
-       depthValue = m_shadowMap.Sample(m_colorSampler, input.lpos.xy).r;
-    }
-
     float3 color = float3(0, 0, 0);
-    if ( input.lpos.z - 0.001 <= depthValue )
-    {
-       color = phong(n, e, lightDir, amb, dif, spec, shininess);
-    }
-    else
-    {
-       color = amb;
-    }
+    color = phong(n, e, lightDir, amb, dif, spec, shininess);
+
     color = color * LIGHT_POWER;
 
     // Save the color into the color buffer to be used later for SSGI
-
     int2 uavCoord = int2(int(input.pos.x), int(input.pos.y));
     // Race condition here
     int depth = m_colorBufferCounter[uavCoord] % MAX_DEPTH;
@@ -106,7 +83,6 @@ PixelShaderOutput main( PixelShaderInput input ) : SV_TARGET
 
 float4 mainNoShadow( PixelShaderInput input ) : SV_TARGET
 {
-    float3 lightDir = normalize(lightPos.xyz - float3(input.worldPos.xyz));
     float3 n = normalize(float3(input.norm.xyz));
     float3 e = -normalize(float3(input.pos.xyz));
 
@@ -121,7 +97,6 @@ float4 mainNoShadow( PixelShaderInput input ) : SV_TARGET
 
 float4 texMain( PixelShaderInput input ) : SV_TARGET
 {
-    float3 lightDir = float3(0.0f, 0.0f, -1.0f);
     float3 n = normalize(input.norm.xyz);
     float3 e = -normalize(input.pos.xyz);
 

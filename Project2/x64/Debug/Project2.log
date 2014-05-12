@@ -1,4 +1,4 @@
-﻿Build started 4/15/2014 9:13:08 PM.
+﻿Build started 5/8/2014 8:32:09 PM.
      1>Project "C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\Project2\Project2.vcxproj" on node 2 (Build target(s)).
      1>Link:
          Project2.vcxproj -> C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Debug\DirectX.exe
@@ -6,4 +6,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:00.10
+Time Elapsed 00:00:00.05

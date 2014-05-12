@@ -1,18 +1,22 @@
-﻿Build started 2/15/2014 5:00:47 PM.
+﻿Build started 5/11/2014 4:56:47 PM.
      1>Project "C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\Project2\Project2.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /O2 /Oi /GL /D _MBCS /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Release\\" /Fd"x64\Release\vc110.pdb" /Gd /TP /errorReport:prompt Renderer.cpp
          Renderer.cpp
+     1>Renderer.cpp(252): warning C4101: 'yAxis' : unreferenced local variable
+     1>Renderer.cpp(254): warning C4101: 'zAxis' : unreferenced local variable
+     1>Renderer.cpp(486): warning C4305: '=' : truncation from 'double' to 'float'
        Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Release\DirectX.exe" /NOLOGO d3d11.lib d3dx11.lib dxerr.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Release\DirectX.pdb" /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Release\DirectX.lib" /MACHINE:X64 x64\Release\D3DBase.obj
-         x64\Release\ObjReader.obj
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Release\DirectX.exe" /NOLOGO assimp.lib d3d11.lib d3dx11.lib dxerr.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Release\DirectX.pdb" /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Release\DirectX.lib" /MACHINE:X64 x64\Release\Camera.obj
+         x64\Release\D3DBase.obj
          x64\Release\Source.obj
          x64\Release\Renderer.obj
          Generating code
+     1>c:\users\chris\documents\visual studio 2012\projects\renderer\project2\renderer.cpp(88): warning C4715: 'Renderer::InitializeMatMap' : not all control paths return a value
          Finished generating code
          Project2.vcxproj -> C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\x64\Release\DirectX.exe
      1>Done Building Project "C:\Users\Chris\Documents\Visual Studio 2012\Projects\Renderer\Project2\Project2.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:02.30
+Time Elapsed 00:00:02.27
