@@ -75,6 +75,5 @@ public:
    ID3D11VertexShader* m_planeVS;
    ID3D11Buffer* m_planeBuffer;
    ID3D11InputLayout* m_inputLayout;
-
 };
 

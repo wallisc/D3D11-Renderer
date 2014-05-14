@@ -29,6 +29,7 @@ __declspec(align(16))
 struct PS_Light_Constant_Buffer
 {
    XMFLOAT4 direction;
+   XMMATRIX mvp;
 };
 
 __declspec(align(16))
@@ -57,12 +58,16 @@ private:
 
    void DestroyD3DMesh(Mesh *d3dMesh);
 
+   UINT m_shadowMapHeight;
+   UINT m_shadowMapWidth;
+
+   D3D11_VIEWPORT m_viewport;
+
    ID3D11VertexShader* m_solidColorVS;
    ID3D11VertexShader* m_planeVS;
 
    ID3D11PixelShader* m_globalIlluminationPS;
    ID3D11PixelShader* m_solidColorPS;
-   ID3D11PixelShader* m_solidColorPSNoShadow;
    ID3D11PixelShader* m_texturePS;
    ID3D11PixelShader* m_blurPS;
 
@@ -75,11 +80,15 @@ private:
    RWRenderTarget* m_pFirstPassNormals;
    RWRenderTarget* m_pFirstPassPositions;
 
+   RWRenderTarget* m_pBlurredShadowMap;
+
    RWRenderTarget* m_pPostProcessingRtv;
 
    PlaneRenderer* m_pPlaneRenderer;
 
    ID3D11SamplerState* m_colorMapSampler;
+   ID3D11SamplerState* m_shadowSampler;
+
    ID3D11RasterizerState* m_rasterState;
    ID3D11UnorderedAccessView* m_uav;
    ID3D11UnorderedAccessView* m_colorBufferDepthUAV;
@@ -93,12 +102,16 @@ private:
 
    // At some point these should be encapsulated into a Mesh Object 
    VS_Transformation_Constant_Buffer m_vsTransConstBuf;
+   VS_Transformation_Constant_Buffer m_vsLightTransConstBuf;
+
 
    PS_Material_Constant_Buffer m_psMaterialConstBuf;
    PS_Light_Constant_Buffer m_psLightConstBuf;
 
    XMMATRIX m_camViewTrans;
+
    XMFLOAT4 m_lightDirection;
+   XMFLOAT4 m_lightUp;
 
    Camera *m_pCamera;
 

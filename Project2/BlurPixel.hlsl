@@ -1,12 +1,12 @@
-Texture2D<float4> m_Source : register(t1);
-Texture2D<float4> m_BlurLayer : register(t2);
+Texture2D<float4> m_Source : register(t0);
 
 SamplerState m_colorSampler : register(s0);
+SamplerState m_shadowSampler : register(s1);
 
-#define BLUR_BLOCK_LENGTH 10
+#define BLUR_BLOCK_LENGTH 1
 #define NUM_SAMPLES BLUR_BLOCK_LENGTH * BLUR_BLOCK_LENGTH
-#define WIDTH 1024
-#define HEIGHT 768
+#define WIDTH 1024 * 2
+#define HEIGHT 768 * 2
 
 struct VertexOutput
 {
@@ -23,11 +23,9 @@ float4 main(VertexOutput input) : SV_TARGET
       for(int y = -(BLUR_BLOCK_LENGTH / 2); y < BLUR_BLOCK_LENGTH / 2 + 1; y++)
       {
          float2 blurCoord = input.tex + float2(float(x) / float(WIDTH), float(y) / float(HEIGHT));
-         blurredColor += m_BlurLayer.Sample(m_colorSampler, blurCoord);
+         blurredColor += m_Source.Sample(m_shadowSampler, blurCoord) / float(NUM_SAMPLES);
       }
    }
-   blurredColor /= float(NUM_SAMPLES);
-   float occlusionValue = blurredColor.w;
 
-	return occlusionValue * (m_Source.Sample(m_colorSampler, input.tex) + blurredColor);
+	return blurredColor;
 }
