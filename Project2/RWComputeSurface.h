@@ -5,14 +5,14 @@
 #include <DxErr.h>
 #include <cassert>
 
-class RWRenderTarget
+class RWComputeSurface
 {
 public:
-   RWRenderTarget(ID3D11Device *pDevice, UINT width, UINT height)
+   RWComputeSurface(ID3D11Device *pDevice, UINT width, UINT height)
    {
       D3D11_TEXTURE2D_DESC texDesc;
       texDesc.ArraySize = 1;
-      texDesc.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
+      texDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D10_BIND_SHADER_RESOURCE;
       texDesc.CPUAccessFlags = 0;
       texDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
       texDesc.Height = height;
@@ -35,19 +35,20 @@ public:
       // TODO: Check the results and error handle
       pDevice->CreateShaderResourceView(pResource, &srvDesc, &pSrv);
 
-      D3D11_RENDER_TARGET_VIEW_DESC rtvDesc;
-      rtvDesc.Format = texDesc.Format;
-      rtvDesc.Texture2D.MipSlice = 0;
-      rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+      D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+      memset(&uavDesc, 0, sizeof(uavDesc));
+
+      uavDesc.Format = texDesc.Format;
+      uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
       
       // TODO: Check the results and error handle
-      pDevice->CreateRenderTargetView(pResource, &rtvDesc, &pRtv);
+      pDevice->CreateUnorderedAccessView(pResource, &uavDesc, &pUav);
    }
 
-   ~RWRenderTarget()
+   ~RWComputeSurface()
    {
       pResource->Release();
-      pRtv->Release();
+      pUav->Release();
       pSrv->Release();
    }
 
@@ -56,13 +57,13 @@ public:
       return pSrv;
    }
 
-   ID3D11RenderTargetView *GetRenderTargetView()
+   ID3D11UnorderedAccessView *GetUnorderedAccessView()
    {
-      return pRtv;
+      return pUav;
    }
 
 private:
    ID3D11Texture2D *pResource;
-   ID3D11RenderTargetView *pRtv;
+   ID3D11UnorderedAccessView *pUav;
    ID3D11ShaderResourceView *pSrv;
 };

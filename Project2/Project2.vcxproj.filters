@@ -42,6 +42,9 @@
     <FxCompile Include="BlurCS.hlsl">
       <Filter>Source Files\Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="TextureShader.hlsl">
+      <Filter>Source Files\Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\test.jpg">
@@ -94,6 +97,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="RWComputeSurface.h">
+      <Filter>Source Files\D3DLayer</Filter>
+    </ClInclude>
+    <ClInclude Include="RWStructuredBuffer.h">
       <Filter>Source Files\D3DLayer</Filter>
     </ClInclude>
   </ItemGroup>

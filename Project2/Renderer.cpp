@@ -196,6 +196,8 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
 {
    static const FLOAT MOVE_SPEED = 0.05f;
    static const FLOAT ROTATE_SPEED = 0.02f;
+   static const FLOAT LIGHT_ROTATE_SPEED = 0.01f;
+
 
    float tx = 0.0f, ty = 0.0f, tz = 0.0f;
    float ry = 0.0f, rx = 0.0f;
@@ -245,11 +247,11 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
    
    if( keyInputArray['Z'])
    {
-      lightRotation += ROTATE_SPEED;
+      lightRotation += LIGHT_ROTATE_SPEED;
    }
    if( keyInputArray['C'])
    {
-      lightRotation -= ROTATE_SPEED;
+      lightRotation -= LIGHT_ROTATE_SPEED;
    }
 
    XMVECTOR xAxis(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f));
@@ -274,7 +276,7 @@ void Renderer::Update(FLOAT dt, BOOL *keyInputArray)
    XMStoreFloat4(&m_lightUp, lightUpVector);
 
 
-   XMVECTOR shadowEye = XMVectorSetW(lightDirVector * 3500.0f, 1.0f);
+   XMVECTOR shadowEye = XMVectorSetW(lightDirVector * 2000.0f, 1.0f);
    XMMATRIX lightView = XMMatrixLookAtLH(shadowEye, lookAtPointVec, lightUpVector);
 
    m_vsTransConstBuf.mvp = view * perspective;
@@ -292,6 +294,8 @@ void Renderer::Render()
    float clearColor[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
    float clearNormals[4] = { 0.5f, 0.5f, 0.5f, 0.0f };
    float black[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+   float clearDepth[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
 
    unsigned int zeroUints[4] = { 0, 0, 0, 0};
 
@@ -300,8 +304,10 @@ void Renderer::Render()
    m_d3dContext->ClearRenderTargetView(m_backBufferTarget, clearColor);
    m_d3dContext->ClearRenderTargetView(m_pFirstPassNormals->GetRenderTargetView(), clearNormals);
    
+   m_d3dContext->ClearUnorderedAccessViewFloat(m_pBlurredShadowSurface->GetUnorderedAccessView(), clearDepth);
    m_d3dContext->ClearUnorderedAccessViewFloat(m_uav, clearColor);
    m_d3dContext->ClearUnorderedAccessViewUint(m_colorBufferDepthUAV, zeroUints);
+
    // Clear the depth buffer to 1.0f and the stencil buffer to 0.
    m_d3dContext->ClearDepthStencilView(m_DepthStencilView,
      D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -338,31 +344,39 @@ void Renderer::Render()
        
          m_pTransformConstants->SetData(m_d3dContext, &m_vsLightTransConstBuf);
          
-         ID3D11RenderTargetView *pNullRtv[] = { NULL };
+         ID3D11RenderTargetView *pLightMapRtv[] = { m_pLightMap->GetRenderTargetView() };
          ID3D11ShaderResourceView *pNullSrv[] = { NULL };
 
          m_d3dContext->PSSetShaderResources(1 , 1, pNullSrv);
-         m_d3dContext->OMSetRenderTargets(1, pNullRtv, m_pShadowMap->GetDepthStencilView());
+         m_d3dContext->OMSetRenderTargets(1, pLightMapRtv, m_pShadowMap->GetDepthStencilView());
       }
       else
       {
-         // Blur the shadow map
-         m_d3dContext->RSSetViewports(1, m_pShadowMap->GetViewport());
+         ID3D11RenderTargetView *pNullRtv[] = { NULL, NULL };
 
-         unsigned int planeStride = sizeof(PlaneVertex);
-         unsigned int planeOffset = 0;
-         m_d3dContext->IASetVertexBuffers( 0, 1, &m_pPlaneRenderer->m_planeBuffer, &planeStride, &planeOffset);
-         m_d3dContext->VSSetShader(m_pPlaneRenderer->m_planeVS, 0, 0);
-         m_d3dContext->IASetInputLayout( m_pPlaneRenderer->m_inputLayout );
+         m_d3dContext->OMSetRenderTargets(2, pNullRtv, NULL);
 
-         ID3D11RenderTargetView *pRtv[] = { m_pBlurredShadowMap->GetRenderTargetView() };
-         ID3D11ShaderResourceView *pSrv[] = { m_pShadowMap->GetShaderResourceView() };
+         ID3D11ShaderResourceView *pSrv[] = { 
+            m_pShadowMap->GetShaderResourceView(),
+            m_pLightMap->GetShaderResourceView() };
+         ID3D11UnorderedAccessView *pUav[] = { 
+            m_pBlurredShadowSurface->GetUnorderedAccessView(),
+            m_pLightBuffer->GetUnorderedAccessView() };
 
-         m_d3dContext->OMSetRenderTargets(1, pRtv, NULL);
-         m_d3dContext->PSSetShaderResources(0 , 1, pSrv);
+         UINT initialCounts[] = {
+            0,
+            0 };
 
-         m_d3dContext->PSSetShader(m_blurPS, 0, 0);
-         m_d3dContext->Draw(3, 0);
+         m_d3dContext->CSSetShader(m_blurCS, NULL, 0);
+         m_d3dContext->CSSetShaderResources(0, 2, pSrv);
+         m_d3dContext->CSSetUnorderedAccessViews(0, 2, pUav, initialCounts);
+         m_d3dContext->Dispatch(m_shadowMapWidth, m_shadowMapHeight, 1);
+
+         ID3D11UnorderedAccessView *pNullUav[] = { NULL, NULL };
+         ID3D11ShaderResourceView *pNullSrv[] = { NULL, NULL };
+
+         m_d3dContext->CSSetShaderResources(0, 2, pNullSrv);
+         m_d3dContext->CSSetUnorderedAccessViews(0, 2, pNullUav, NULL);
 
          // Prepare the setup for actual rendering
          ID3D11UnorderedAccessView *pFirstPassUav[] = { m_uav, m_colorBufferDepthUAV };
@@ -372,14 +386,15 @@ void Renderer::Render()
             m_pFirstPassNormals->GetRenderTargetView() };
          
          ID3D11ShaderResourceView *pShadowSrv[] = {
-            m_pBlurredShadowMap->GetShaderResourceView()
+            m_pBlurredShadowSurface->GetShaderResourceView(),
+            m_pLightBuffer->GetShaderResourceView()
          };
          
          m_d3dContext->RSSetViewports(1, &m_viewport);
          m_d3dContext->IASetInputLayout( m_inputLayout );
          m_d3dContext->VSSetShader(m_solidColorVS, 0, 0);
          m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(3, pFirstPassRtv, m_DepthStencilView, 3, 2, pFirstPassUav, NULL);
-         m_d3dContext->PSSetShaderResources(1 , 1, pShadowSrv);
+         m_d3dContext->PSSetShaderResources(1 , 2, pShadowSrv);
          m_pTransformConstants->SetData(m_d3dContext, &m_vsTransConstBuf);
       }
 
@@ -389,7 +404,14 @@ void Renderer::Render()
          if( pMat->m_texture )
          {
             m_d3dContext->PSSetShaderResources(0 , 1, &pMat->m_texture);
-            m_d3dContext->PSSetShader(m_texturePS, 0, 0);
+            if( draw == 0)
+            {
+               m_d3dContext->PSSetShader(m_textureNoShadingPS, 0, 0);
+            }
+            else
+            {
+               m_d3dContext->PSSetShader(m_texturePS, 0, 0);
+            }
          }
          else
          {
@@ -440,11 +462,11 @@ void Renderer::Render()
    m_d3dContext->PSSetShaderResources(1, 2, pPostProcessSrv);
    
    m_d3dContext->Draw(3, 0);
+#endif
 
    // Clear our the SRVs
    ID3D11ShaderResourceView *pNullSrv[] = { NULL, NULL, NULL, NULL };
    m_d3dContext->PSSetShaderResources(1 , 4, pNullSrv);
-#endif
    m_swapChain->Present(0, 0);
 }
 
@@ -457,10 +479,13 @@ bool Renderer::LoadContent()
 	m_viewport.TopLeftX = 0.0f;
 	m_viewport.TopLeftY = 0.0f;
 
-   m_shadowMapHeight = m_height * 2;
-   m_shadowMapWidth = m_width * 2;
+   m_shadowMapHeight = m_height;
+   m_shadowMapWidth = m_width;
    m_pShadowMap = new ShadowMap(m_d3dDevice, m_shadowMapWidth, m_shadowMapHeight);
    m_pBlurredShadowMap = new RWRenderTarget(m_d3dDevice, m_shadowMapWidth, m_shadowMapHeight);
+   m_pBlurredShadowSurface = new RWComputeSurface(m_d3dDevice,  m_shadowMapWidth, m_shadowMapHeight);
+   m_pLightMap = new RWRenderTarget(m_d3dDevice, m_shadowMapWidth, m_shadowMapHeight);
+   m_pLightBuffer = new RWStructuredBuffer<PS_Point_Light>(m_d3dDevice, 24 * 32);
 
    m_pFirstPassColors = new RWRenderTarget(m_d3dDevice, m_width, m_height);
    m_pFirstPassNormals = new RWRenderTarget(m_d3dDevice, m_width, m_height);
@@ -564,6 +589,24 @@ bool Renderer::LoadContent()
       m_lightUp = LIGHT_UP;
   }
 
+  UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if defined( DEBUG ) || defined( _DEBUG )
+  flags |= D3DCOMPILE_DEBUG;
+#endif
+   // Prefer higher CS shader profile when possible as CS 5.0 provides better performance on 11-class hardware.
+  LPCSTR profile = ( m_d3dDevice->GetFeatureLevel() >= D3D_FEATURE_LEVEL_11_0 ) ? "cs_5_0" : "cs_4_0";
+   const D3D_SHADER_MACRO defines[] = 
+   {
+       "EXAMPLE_DEFINE", "1",
+       NULL, NULL
+   };
+   ID3DBlob* csBuffer = nullptr;
+   HRESULT hr = D3DUtils::CompileD3DShader( "BlurCS.hlsl", "main", "cs_5_0", &csBuffer);
+
+   HR(m_d3dDevice->CreateComputeShader( csBuffer->GetBufferPointer(), 
+		                               csBuffer->GetBufferSize(), 
+		                               NULL, &m_blurCS));
+
    ID3DBlob* vsBuffer = 0;
    BOOL compileResult = D3DUtils::CompileD3DShader("PlainVert.hlsl", "main", "vs_5_0", &vsBuffer);
    if( compileResult == false )
@@ -634,6 +677,13 @@ bool Renderer::LoadContent()
       "texMain", 
       "ps_5_0", 
       &m_texturePS ));
+
+   HR(D3DUtils::CreatePixelShader(
+      m_d3dDevice,
+      "TextureShader.hlsl", 
+      "main", 
+      "ps_5_0", 
+      &m_textureNoShadingPS ));
 
    VS_Transformation_Constant_Buffer vsConstBuf;
    vsConstBuf.mvp = XMMatrixIdentity();
@@ -719,7 +769,13 @@ bool Renderer::LoadContent()
 void Renderer::UnloadContent() 
 {
    delete m_pShadowMap;
+   delete m_pLightMap;
+
+   delete m_pLightBuffer;
+   
    delete m_pBlurredShadowMap;
+
+   delete m_pBlurredShadowSurface;
 
    delete m_pFirstPassColors;
    delete m_pFirstPassNormals;

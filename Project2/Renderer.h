@@ -9,6 +9,8 @@
 #include "ShadowMap.h"
 #include "ConstantBuffer.h"
 #include "RWRenderTarget.h"
+#include "RWComputeSurface.h"
+#include "RWStructuredBuffer.h"
 #include "PlaneRenderer.h"
 #include "Camera.h"
 
@@ -19,6 +21,13 @@
 #include <map>
 
 #define MAX_COLOR_BUFFER_DEPTH 8
+
+__declspec(align(16))
+struct PS_Point_Light
+{
+   XMFLOAT4 position;
+   XMFLOAT4 color;
+};
 
 struct VS_Transformation_Constant_Buffer 
 {
@@ -70,6 +79,8 @@ private:
    ID3D11PixelShader* m_solidColorPS;
    ID3D11PixelShader* m_texturePS;
    ID3D11PixelShader* m_blurPS;
+   ID3D11PixelShader* m_textureNoShadingPS;
+
 
    ID3D11InputLayout* m_inputLayout;
 
@@ -81,6 +92,13 @@ private:
    RWRenderTarget* m_pFirstPassPositions;
 
    RWRenderTarget* m_pBlurredShadowMap;
+   RWRenderTarget* m_pLightMap;
+
+   RWStructuredBuffer<PS_Point_Light> *m_pLightBuffer;
+
+   ID3D11ComputeShader* m_blurCS;
+   RWComputeSurface* m_pBlurredShadowSurface;
+
 
    RWRenderTarget* m_pPostProcessingRtv;
 
@@ -103,7 +121,6 @@ private:
    // At some point these should be encapsulated into a Mesh Object 
    VS_Transformation_Constant_Buffer m_vsTransConstBuf;
    VS_Transformation_Constant_Buffer m_vsLightTransConstBuf;
-
 
    PS_Material_Constant_Buffer m_psMaterialConstBuf;
    PS_Light_Constant_Buffer m_psLightConstBuf;
