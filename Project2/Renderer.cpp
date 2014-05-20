@@ -299,10 +299,7 @@ void Renderer::Render()
 
    unsigned int zeroUints[4] = { 0, 0, 0, 0};
 
-   m_d3dContext->ClearRenderTargetView(m_pFirstPassPositions->GetRenderTargetView(), clearColor);
-   m_d3dContext->ClearRenderTargetView(m_pFirstPassColors->GetRenderTargetView(), clearColor);
    m_d3dContext->ClearRenderTargetView(m_backBufferTarget, clearColor);
-   m_d3dContext->ClearRenderTargetView(m_pFirstPassNormals->GetRenderTargetView(), clearNormals);
    
    m_d3dContext->ClearUnorderedAccessViewFloat(m_pBlurredShadowSurface->GetUnorderedAccessView(), clearDepth);
    m_d3dContext->ClearUnorderedAccessViewFloat(m_uav, clearColor);
@@ -381,9 +378,7 @@ void Renderer::Render()
          // Prepare the setup for actual rendering
          ID3D11UnorderedAccessView *pFirstPassUav[] = { m_uav, m_colorBufferDepthUAV };
          ID3D11RenderTargetView *pFirstPassRtv[] = { 
-            m_backBufferTarget,
-            m_pFirstPassPositions->GetRenderTargetView(),
-            m_pFirstPassNormals->GetRenderTargetView() };
+            m_backBufferTarget };
          
          ID3D11ShaderResourceView *pShadowSrv[] = {
             m_pBlurredShadowSurface->GetShaderResourceView(),
@@ -393,7 +388,7 @@ void Renderer::Render()
          m_d3dContext->RSSetViewports(1, &m_viewport);
          m_d3dContext->IASetInputLayout( m_inputLayout );
          m_d3dContext->VSSetShader(m_solidColorVS, 0, 0);
-         m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(3, pFirstPassRtv, m_DepthStencilView, 3, 2, pFirstPassUav, NULL);
+         m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, pFirstPassRtv, m_DepthStencilView, 3, 2, pFirstPassUav, NULL);
          m_d3dContext->PSSetShaderResources(1 , 2, pShadowSrv);
          m_pTransformConstants->SetData(m_d3dContext, &m_vsTransConstBuf);
       }
@@ -426,44 +421,6 @@ void Renderer::Render()
       }
    }
    
-#if 0
-   // Post processing passes generate a plane using geometry generated in the VS
-   unsigned int planeStride = sizeof(PlaneVertex);
-   unsigned int planeOffset = 0;
-   m_d3dContext->IASetVertexBuffers( 0, 1, &m_pPlaneRenderer->m_planeBuffer, &planeStride, &planeOffset);
-   m_d3dContext->VSSetShader(m_pPlaneRenderer->m_planeVS, 0, 0);
-   m_d3dContext->IASetInputLayout( m_pPlaneRenderer->m_inputLayout );
-
-   // Screen Space Global Illumination Pass
-   ID3D11UnorderedAccessView *pUav[] = { m_colorBufferDepthUAV };
-   ID3D11RenderTargetView *pRtv[] = { m_pPostProcessingRtv->GetRenderTargetView() };
-   ID3D11ShaderResourceView *pSrv[] = {
-      m_colorBufferSrv,
-      m_pFirstPassPositions->GetShaderResourceView(),
-      m_pFirstPassNormals->GetShaderResourceView(),
-      m_pFirstPassColors->GetShaderResourceView()
-   };
-
-   m_d3dContext->OMSetRenderTargetsAndUnorderedAccessViews(1, pRtv, NULL, 1, 1, pUav, NULL);
-   m_d3dContext->PSSetShaderResources(1 , ARRAYSIZE(pSrv), pSrv);
-
-
-   m_d3dContext->PSSetShader(m_globalIlluminationPS, 0, 0);
-   m_d3dContext->Draw(3, 0);
-
-   // Post processing effect
-   ID3D11ShaderResourceView *pPostProcessSrv[] = { 
-      m_pFirstPassColors->GetShaderResourceView(),
-      m_pPostProcessingRtv->GetShaderResourceView() };
-   
-   m_d3dContext->PSSetShader(m_blurPS, 0, 0);
-   
-   m_d3dContext->OMSetRenderTargets(1, &m_backBufferTarget, NULL);
-   m_d3dContext->PSSetShaderResources(1, 2, pPostProcessSrv);
-   
-   m_d3dContext->Draw(3, 0);
-#endif
-
    // Clear our the SRVs
    ID3D11ShaderResourceView *pNullSrv[] = { NULL, NULL, NULL, NULL };
    m_d3dContext->PSSetShaderResources(1 , 4, pNullSrv);
@@ -487,11 +444,6 @@ bool Renderer::LoadContent()
    m_pLightMap = new RWRenderTarget(m_d3dDevice, m_shadowMapWidth, m_shadowMapHeight);
    m_pLightBuffer = new RWStructuredBuffer<PS_Point_Light>(m_d3dDevice, 24 * 32);
 
-   m_pFirstPassColors = new RWRenderTarget(m_d3dDevice, m_width, m_height);
-   m_pFirstPassNormals = new RWRenderTarget(m_d3dDevice, m_width, m_height);
-   m_pFirstPassPositions = new RWRenderTarget(m_d3dDevice, m_width, m_height);
-
-   m_pPostProcessingRtv = new RWRenderTarget(m_d3dDevice, m_width, m_height);
    m_pPlaneRenderer = new PlaneRenderer(m_d3dDevice);
 
    D3D11_RASTERIZER_DESC rasterizerDesc;
@@ -631,7 +583,7 @@ bool Renderer::LoadContent()
    HR(m_d3dDevice->CreateVertexShader(
          vsPlaneBuffer->GetBufferPointer(), 
          vsPlaneBuffer->GetBufferSize(), 
-         0, 
+         0,
          &m_planeVS));
 
    vsPlaneBuffer->Release();
@@ -777,11 +729,6 @@ void Renderer::UnloadContent()
 
    delete m_pBlurredShadowSurface;
 
-   delete m_pFirstPassColors;
-   delete m_pFirstPassNormals;
-   delete m_pFirstPassPositions;
-
-   delete m_pPostProcessingRtv;
    delete m_pTransformConstants;
    delete m_pLightConstants;
    delete m_pPlaneRenderer;

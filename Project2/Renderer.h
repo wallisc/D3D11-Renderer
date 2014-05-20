@@ -87,10 +87,6 @@ private:
    ConstantBuffer<VS_Transformation_Constant_Buffer> *m_pTransformConstants;
    ConstantBuffer<PS_Light_Constant_Buffer> *m_pLightConstants;
 
-   RWRenderTarget* m_pFirstPassColors;
-   RWRenderTarget* m_pFirstPassNormals;
-   RWRenderTarget* m_pFirstPassPositions;
-
    RWRenderTarget* m_pBlurredShadowMap;
    RWRenderTarget* m_pLightMap;
 
@@ -98,9 +94,6 @@ private:
 
    ID3D11ComputeShader* m_blurCS;
    RWComputeSurface* m_pBlurredShadowSurface;
-
-
-   RWRenderTarget* m_pPostProcessingRtv;
 
    PlaneRenderer* m_pPlaneRenderer;
 

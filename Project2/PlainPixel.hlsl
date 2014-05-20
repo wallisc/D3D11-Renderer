@@ -24,14 +24,6 @@ struct PixelShaderInput
   float4 lPos : TEXCOORD1;
 };
 
-struct PixelShaderOutput
-{
-  float4 color : COLOR0;
-  float4 pos : COLOR1;
-  float4 norm : COLOR3;
-
-};
-
 cbuffer Material : register(b0)
 {
    float4 ambient;
@@ -82,35 +74,6 @@ float4 main( PixelShaderInput input ) : SV_TARGET
     float3 color = phong(n, e, lightDir, lightClr, amb, dif, spec, shininess);
  
     return float4(color, 1.0f);
-#if 0
-    PixelShaderOutput output;
-    float3 n = normalize(float3(input.norm.xyz));
-    float3 e = -normalize(float3(input.pos.xyz));
-
-    float3 amb = float3(ambient.xyz);
-    float3 dif = float3(diffuse.xyz);
-    float3 spec = float3(specular.xyz);
-
-    float3 color = float3(0, 0, 0);
-    color = phong(n, e, lightDir, amb, dif, spec, shininess);
-
-    color = color * LIGHT_POWER;
-
-    // Save the color into the color buffer to be used later for SSGI
-    int2 uavCoord = int2(int(input.pos.x), int(input.pos.y));
-    // Race condition here
-    int depth = m_colorBufferCounter[uavCoord] % MAX_DEPTH;
-    m_colorBuffer[int3(uavCoord.xy, depth)] 
-       = float4(color, input.pos.z);
-    m_colorBufferCounter[uavCoord.xy].r++;
-
-    output.color = float4(color, 1.0f);
-    output.pos = float4(input.worldPos.xyz, 1.0f);
-    float3 normalizedN = normalize(input.norm.xyz);
-    output.norm = float4(normalizedN, 0.0f);
-    
-    return output;
-#endif
 }
 
 float4 texMain( PixelShaderInput input ) : SV_TARGET
